@@ -9,6 +9,8 @@ import { domainOf } from "@/lib/url";
 import { AddSheet } from "./AddSheet";
 import { Button } from "./Button";
 import { Grid } from "./Grid";
+import { GridLines } from "./GridLines";
+import { Reel } from "./Reel";
 import { Hero } from "./Hero";
 import { Intro } from "./Intro";
 import { Nav } from "./Nav";
@@ -33,6 +35,24 @@ type Props = {
 };
 
 let toastSeq = 0;
+
+/** Puts the hand drawn underline under the last word of the title. */
+function placeUnderline(scope: HTMLElement, lastWord: HTMLElement | undefined) {
+  const svg = scope.querySelector<SVGElement>("[data-underline]");
+  const title = scope.querySelector<HTMLElement>(".hero__title");
+  if (!svg || !title || !lastWord) return;
+  // Work from layout offsets, which ignore the intro transform on the title. The line is squeezed
+  // horizontally around its centre, so map the word's layout position to its visual position.
+  const squeeze = parseFloat(getComputedStyle(title).getPropertyValue("--title-squeeze")) || 0.82;
+  const centre = title.offsetWidth / 2;
+  const visualLeft = centre + (lastWord.offsetLeft - centre) * squeeze;
+  const visualWidth = lastWord.offsetWidth * squeeze;
+  const bottom = lastWord.offsetTop + lastWord.offsetHeight;
+  svg.style.left = `${visualLeft - visualWidth * 0.04}px`;
+  svg.style.width = `${visualWidth * 1.08}px`;
+  svg.style.top = `${bottom - lastWord.offsetHeight * 0.14}px`;
+  svg.style.height = `${Math.max(14, lastWord.offsetHeight * 0.22)}px`;
+}
 
 export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Props) {
   const router = useRouter();
@@ -174,8 +194,8 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
       if ("scrollRestoration" in history) history.scrollRestoration = "manual";
       window.scrollTo(0, 0);
 
-      // Cards start hidden so the grid can reveal on scroll once the curtain is gone.
-      const cards = scope.querySelectorAll("[data-card]");
+      // Cards start hidden so they can reveal on scroll once the curtain is gone.
+      const cards = scope.querySelectorAll("[data-reveal]");
       if (cards.length) gsap.set(cards, { opacity: 0, y: 48 });
 
       let cancelled = false;
@@ -207,22 +227,16 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
         if (cancelled) return;
 
         const lines = title.querySelectorAll("[data-split]");
-        split = SplitText.create(lines, { type: "chars", mask: "chars", charsClass: "char" });
+        split = SplitText.create(lines, { type: "words,chars", mask: "chars", charsClass: "char", wordsClass: "word" });
         // Masks clip descenders when the line height is tight; give them room without moving anything.
         split.masks.forEach((m) => {
           const el = m as HTMLElement;
           el.style.padding = "0.12em 0.04em 0.2em";
           el.style.margin = "-0.12em -0.04em -0.2em";
         });
-        // The Dutch "ij" gets the accent colour.
-        split.chars.forEach((c, i, all) => {
-          const next = all[i + 1];
-          if (c.textContent === "i" && next?.textContent === "j") {
-            c.classList.add("is-accent");
-            next.classList.add("is-accent");
-          }
-        });
         title.classList.add("is-ready");
+        placeUnderline(scope, split.words[split.words.length - 1] as HTMLElement | undefined);
+        const doodles = scope.querySelectorAll<SVGPathElement>("[data-doodle] path");
         const lede = scope.querySelector("[data-words]");
         words = lede ? SplitText.create(lede, { type: "words", mask: "words", wordsClass: "word" }) : undefined;
         const fades = scope.querySelectorAll("[data-fade]");
@@ -233,6 +247,7 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
           finish();
           return;
         }
+        gsap.set(doodles, { drawSVG: "0%" });
 
         const rect = title.getBoundingClientRect();
         // Start a touch below the middle of the screen, then rise into place while the curtain lifts.
@@ -262,6 +277,7 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
           .to(intro, { yPercent: -100, duration: 1.3, ease: EASE.inOut }, 1.65)
           .to(nav, { opacity: 1, y: 0, duration: 1.1 }, 2.45);
         if (sticker) tl.to(sticker, { scale: 1, rotation: -8, opacity: 1, duration: 0.9, ease: "back.out(2.2)" }, 2.55);
+        if (doodles.length) tl.to(doodles, { drawSVG: "100%", duration: 0.7, ease: "power2.inOut", stagger: 0.16 }, 2.5);
         if (words) tl.to(words.words, { yPercent: 0, duration: 1, stagger: 0.018 }, 2.45);
         if (fades.length) tl.to(fades, { opacity: 1, y: 0, duration: 1, stagger: 0.12 }, 2.6);
       };
@@ -291,7 +307,7 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
         if (el && !el.isConnected) st.kill();
       });
 
-      const fresh = gsap.utils.toArray<HTMLElement>("[data-card]:not([data-revealed])", scope);
+      const fresh = gsap.utils.toArray<HTMLElement>("[data-reveal]:not([data-revealed])", scope);
       if (fresh.length) {
         fresh.forEach((c) => (c.dataset.revealed = "1"));
         if (prefersReducedMotion()) {
@@ -309,6 +325,22 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
       ScrollTrigger.refresh();
     },
     { scope: root, dependencies: [introDone, sites, pending] },
+  );
+
+  /* ---------------- keep the underline in place on resize ---------------- */
+
+  useGSAP(
+    () => {
+      const scope = root.current;
+      if (!scope) return;
+      const onResize = () => {
+        const words = scope.querySelectorAll<HTMLElement>(".hero__title .word");
+        placeUnderline(scope, words[words.length - 1]);
+      };
+      window.addEventListener("resize", onResize);
+      return () => window.removeEventListener("resize", onResize);
+    },
+    { scope: root },
   );
 
   /* ---------------- search transitions ---------------- */
@@ -342,12 +374,15 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
 
   return (
     <div ref={root} className="page">
+      <GridLines />
       <Intro ref={introRef} />
       <Nav ref={navRef} query={query} onQuery={setQuery} total={sites.length} shown={visibleIds.size} onAdd={openSheet} />
 
       <main>
         <Hero ref={titleRef} total={sites.length} latest={latest} />
         <Ticker total={sites.length} />
+
+        {!isEmpty ? <Reel sites={sites.slice(0, 10)} total={sites.length} /> : null}
 
         <div id="grid">
           {needsSetup ? (

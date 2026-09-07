@@ -1,8 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { authEnabled, AUTH_COOKIE, isValidToken } from "@/lib/auth";
 import { captureSite, fetchTitle } from "@/lib/screenshot";
 import { importSeed as runSeedImport } from "@/lib/seed";
 import { getStore, updateIndex } from "@/lib/store";
@@ -10,12 +8,6 @@ import type { Site } from "@/lib/types";
 import { cleanTitle, domainOf, makeId, normalizeUrl } from "@/lib/url";
 
 export type ActionResult<T = undefined> = { ok: true; data: T; warning?: string } | { ok: false; error: string };
-
-async function assertAllowed() {
-  if (!authEnabled()) return;
-  const jar = await cookies();
-  if (!(await isValidToken(jar.get(AUTH_COOKIE)?.value))) throw new Error("Niet ingelogd");
-}
 
 function fail(err: unknown): { ok: false; error: string } {
   const message = err instanceof Error ? err.message : "Er ging iets mis";
@@ -25,7 +17,6 @@ function fail(err: unknown): { ok: false; error: string } {
 
 export async function addSite(rawUrl: string): Promise<ActionResult<Site>> {
   try {
-    await assertAllowed();
     const url = normalizeUrl(rawUrl);
     const store = await getStore();
     const existing = (await store.readIndex()).sites.find((s) => s.url === url);
@@ -65,7 +56,6 @@ export async function addSite(rawUrl: string): Promise<ActionResult<Site>> {
 
 export async function deleteSite(id: string): Promise<ActionResult> {
   try {
-    await assertAllowed();
     const store = await getStore();
     let removed: Site | undefined;
     await updateIndex((index) => {
@@ -82,7 +72,6 @@ export async function deleteSite(id: string): Promise<ActionResult> {
 
 export async function refreshSnapshot(id: string): Promise<ActionResult<Site>> {
   try {
-    await assertAllowed();
     const store = await getStore();
     const current = (await store.readIndex()).sites.find((s) => s.id === id);
     if (!current) return { ok: false, error: "Site niet gevonden" };
@@ -102,7 +91,6 @@ export async function refreshSnapshot(id: string): Promise<ActionResult<Site>> {
 
 export async function replaceImage(id: string, formData: FormData): Promise<ActionResult<Site>> {
   try {
-    await assertAllowed();
     const file = formData.get("file");
     if (!(file instanceof File) || !file.type.startsWith("image/")) return { ok: false, error: "Kies een afbeelding" };
     if (file.size > 15 * 1024 * 1024) return { ok: false, error: "Afbeelding is groter dan 15 MB" };
@@ -129,7 +117,6 @@ export async function replaceImage(id: string, formData: FormData): Promise<Acti
 
 export async function renameSite(id: string, title: string): Promise<ActionResult<Site>> {
   try {
-    await assertAllowed();
     const clean = title.trim().slice(0, 60);
     if (!clean) return { ok: false, error: "Geef een naam op" };
     let updated: Site | undefined;
@@ -150,7 +137,6 @@ export async function renameSite(id: string, title: string): Promise<ActionResul
 
 export async function importSeed(): Promise<ActionResult<{ added: number; skipped: number }>> {
   try {
-    await assertAllowed();
     const result = await runSeedImport();
     revalidatePath("/");
     return { ok: true, data: result };

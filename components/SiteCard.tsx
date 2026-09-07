@@ -36,7 +36,7 @@ export function SiteCard({ site, index, busy, hidden, onDelete, onRefresh, onRep
   };
 
   return (
-    <article className={`card${confirming ? " is-confirming" : ""}${hidden ? " is-hidden" : ""}`} data-card data-id={site.id}>
+    <article className={`card${confirming ? " is-confirming" : ""}${hidden ? " is-hidden" : ""}`} data-card data-reveal data-id={site.id}>
       <a className="card__link" href={site.url} target="_blank" rel="noopener noreferrer" aria-label={`${site.title} openen`}>
         <div className="card__frame">
           <div className="card__media">
@@ -134,7 +134,7 @@ type PendingProps = {
 export function PendingCard({ item, index, onRetry, onDismiss }: PendingProps) {
   const error = item.status === "error";
   return (
-    <article className={`card card--pending${error ? " card--error" : ""}`} data-card data-pending>
+    <article className={`card card--pending${error ? " card--error" : ""}`} data-card data-reveal data-pending>
       <div className="card__frame">
         {!error ? <div className="card__shimmer" aria-hidden /> : null}
         <div className="card__status" role="status">

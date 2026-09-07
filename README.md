@@ -1,6 +1,6 @@
 # Tijmens Fijne Sites
 
-Persoonlijk webinspiratie archief. Snapshots van homepages in een strak raster, elke snapshot is een link naar de site. Toevoegen, verwijderen, zoeken, dark en light, en een intro die de titel op z'n plek zet.
+Persoonlijk webinspiratie archief. Snapshots van homepages in een strak raster, elke snapshot is een link naar de site. Toevoegen, verwijderen, zoeken, dark en light, een carrousel met de laatste toevoegingen en een intro die de titel op z'n plek zet. Openbare site, geen wachtwoord.
 
 Gebouwd met Next.js 16, GSAP, Lenis en Vercel Blob. Lettertype DM Sans.
 
@@ -19,9 +19,8 @@ Op een lege site zie je de knop **Startlijst importeren**. Die zet de 53 sites u
 
 1. Importeer deze repo in Vercel (New Project, framework wordt automatisch herkend).
 2. Ga in het project naar **Storage**, kies **Create Database → Blob** en koppel de store aan het project (Production aangevinkt). Privé of public maakt niet uit: bij een privé store lopen de snapshots via `/api/blob/…`, bij een public store via de blob URL. Vercel zet zelf de variabelen (`BLOB_STORE_ID` met OIDC, of `BLOB_READ_WRITE_TOKEN`).
-3. Zet bij **Settings → Environment Variables** het wachtwoord: `SITE_PASSWORD=jouwwachtwoord`. Zonder wachtwoord staat de site open voor iedereen met de URL.
-4. Deploy (of redeploy na het koppelen van de store).
-5. Open de site, vul het wachtwoord in en klik **Startlijst importeren**.
+3. Deploy (of redeploy na het koppelen van de store).
+4. Open de site en klik **Startlijst importeren**.
 
 Snapshots op Vercel worden gemaakt met `@sparticuz/chromium` (een headless Chromium voor serverless). De eerste snapshot na een tijdje stilte duurt iets langer door de koude start. Lukt een snapshot niet, dan probeert de app de Microlink API. Blokkeert een site robots helemaal, dan wordt de site opgeslagen met een placeholder en upload je zelf een afbeelding via het pijltje op de kaart.
 
@@ -29,8 +28,6 @@ Snapshots op Vercel worden gemaakt met `@sparticuz/chromium` (een headless Chrom
 
 | Naam                    | Wat                                                                   |
 | ----------------------- | --------------------------------------------------------------------- |
-| `SITE_PASSWORD`         | Wachtwoord voor de poort. Eén keer invullen per apparaat (cookie, 1 jaar). |
-| `AUTH_SECRET`           | Optioneel. Eigen geheim voor de cookie handtekening.                    |
 | `BLOB_STORE_ID` / `BLOB_READ_WRITE_TOKEN` | Vercel Blob. Automatisch gezet als je de store koppelt (OIDC of vaste token). |
 | `BLOB_ACCESS`           | Optioneel: `private` of `public`. Zonder deze waarde probeert de app het zelf uit. |
 | `CHROME_PATH`           | Optioneel, alleen lokaal. Pad naar een Chromium of Chrome binary.      |
@@ -43,19 +40,16 @@ Zie `.env.example`.
 app/
   page.tsx            laadt de sites (server) en rendert SiteApp
   actions.ts          server actions: toevoegen, verwijderen, snapshot vernieuwen, afbeelding vervangen, import
-  unlock/             wachtwoordpagina
   api/shots/[file]    serveert lokale snapshots (alleen zonder Blob)
   api/blob/[...path]  streamt snapshots uit een privé Blob store
   globals.css         alle styling: tokens, dark en light, componenten
 components/
   SiteApp.tsx         client root: state, zoeken, intro en scroll choreografie (GSAP)
-  Intro.tsx, Nav.tsx, Hero.tsx, Ticker.tsx, Grid.tsx, SiteCard.tsx, AddSheet.tsx, Button.tsx, ThemeToggle.tsx
+  Intro.tsx, Nav.tsx, Hero.tsx, Ticker.tsx, Reel.tsx, Grid.tsx, SiteCard.tsx, AddSheet.tsx, Button.tsx, ThemeToggle.tsx, GridLines.tsx
 lib/
   screenshot.ts       snapshot maken (Chromium, Microlink als vangnet)
   store.ts            opslag: Vercel Blob (getimestampte index + afbeeldingen) of lokaal in .data/
-  auth.ts             cookie handtekening
   seed.ts             import van de startlijst
-proxy.ts              wachtwoordpoort (Next 16 proxy, voorheen middleware)
 seed/                 startlijst: sites.json en shots/*.webp
 ```
 
@@ -63,6 +57,9 @@ seed/                 startlijst: sites.json en shots/*.webp
 
 - **Kleuren en lijnen**: de tokens bovenin `app/globals.css` (`:root` en `:root[data-theme="dark"]`). De accentkleur is `--accent`.
 - **Titel**: `.hero__title` in `globals.css`. De horizontale versmalling zit in `--title-squeeze` (nu 0.82). Wil je een echt condensed font, wissel dan `DM_Sans` in `app/layout.tsx` voor bijvoorbeeld `Instrument_Sans` met `axes: ["wdth"]` en zet `--title-squeeze: 1`.
+- **Lime krabbels en sticker**: de SVG paden staan in `components/Hero.tsx`, de stijl onder `.doodle` en `.hero__sticker` in `globals.css`. De onderstreping wordt door `placeUnderline` in `SiteApp.tsx` onder het laatste woord gezet.
+- **Achtergrondraster**: `.gridlines` in `globals.css` (4, 6 of 12 kolommen per breakpoint).
+- **Carrousel**: `components/Reel.tsx`, toont de 10 nieuwste sites.
 - **Intro timing**: de timeline in `components/SiteApp.tsx` onder "intro choreography".
 - **Raster**: kolommen per breakpoint in `.grid` in `globals.css`.
 - **Snapshotformaat**: `VIEWPORT` in `lib/screenshot.ts` (nu 1440 × 900).
