@@ -1,6 +1,6 @@
 import { del, get, put } from "@vercel/blob";
 import type { SiteStore } from "./store";
-import { blobToken, emptyIndex } from "./store";
+import { blobAuth, emptyIndex } from "./store";
 import type { SiteIndex } from "./types";
 
 const INDEX_PATH = "tfs/index.json";
@@ -9,7 +9,7 @@ export const blobStore: SiteStore = {
   kind: "blob",
 
   async readIndex() {
-    const res = await get(INDEX_PATH, { access: "public", useCache: false, token: blobToken() });
+    const res = await get(INDEX_PATH, { access: "public", useCache: false, ...blobAuth() });
     if (!res || res.statusCode !== 200) return emptyIndex();
     const text = await new Response(res.stream).text();
     try {
@@ -28,7 +28,7 @@ export const blobStore: SiteStore = {
       allowOverwrite: true,
       addRandomSuffix: false,
       cacheControlMaxAge: 60,
-      token: blobToken(),
+      ...blobAuth(),
     });
   },
 
@@ -38,13 +38,13 @@ export const blobStore: SiteStore = {
       access: "public",
       contentType,
       addRandomSuffix: true,
-      token: blobToken(),
+      ...blobAuth(),
     });
     return blob.url;
   },
 
   async deleteImage(url) {
     if (!url.includes(".blob.vercel-storage.com/")) return;
-    await del(url, { token: blobToken() }).catch(() => undefined);
+    await del(url, blobAuth()).catch(() => undefined);
   },
 };

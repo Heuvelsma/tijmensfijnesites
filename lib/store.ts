@@ -22,8 +22,26 @@ export function blobToken(): string | undefined {
   return key ? process.env[key] : undefined;
 }
 
+/**
+ * Since 2026 Vercel connects a store through OIDC by default: the project only gets
+ * BLOB_STORE_ID (plus a rotating VERCEL_OIDC_TOKEN at runtime), no static token.
+ * The SDK handles that by itself, so either signal means the store is there.
+ */
 export function hasBlobStore(): boolean {
-  return Boolean(blobToken());
+  return Boolean(blobToken() || process.env.BLOB_STORE_ID);
+}
+
+/** Options to spread into every @vercel/blob call. Only sets token when there is one, so OIDC keeps working. */
+export function blobAuth(): { token?: string } {
+  const token = blobToken();
+  return token ? { token } : {};
+}
+
+/** Names (never values) of the environment variables that matter for storage. Used on the status line. */
+export function storageEnvNames(): string[] {
+  return Object.keys(process.env)
+    .filter((k) => /^BLOB_|_READ_WRITE_TOKEN$|^VERCEL_OIDC_TOKEN$/.test(k) && process.env[k])
+    .sort();
 }
 
 export function isVercel(): boolean {

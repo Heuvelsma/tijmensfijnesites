@@ -22,6 +22,7 @@ type Diagnostics = {
   storage: "blob" | "local" | "none";
   seedCount: number;
   loadError: string | null;
+  envNames: string[];
 };
 
 type Props = {
@@ -347,9 +348,9 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
         <div id="grid">
           {needsSetup ? (
             <div className="notice" data-fade style={{ marginTop: 32 }}>
-              <strong>Nog even koppelen.</strong> Deze deployment heeft nog geen opslag. Maak in Vercel onder <em>Storage</em> een{" "}
-              <em>Blob</em> store aan, koppel die aan dit project en deploy opnieuw. Daarna verschijnt hier de knop om de startlijst te
-              importeren.
+              <strong>Nog even koppelen.</strong> Deze deployment ziet geen Blob store. Koppel de store in Vercel aan dit project
+              (Storage → je store → Projects → Connect to Project, met Production aangevinkt) en deploy daarna opnieuw. De statusregel
+              hieronder laat zien welke variabelen deze deployment wel ziet.
             </div>
           ) : null}
 
@@ -376,6 +377,12 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
                   <dt>Startlijst</dt>
                   <dd>{diagnostics.seedCount > 0 ? `${diagnostics.seedCount} sites klaar` : "Niet gevonden"}</dd>
                 </div>
+                {diagnostics.storage !== "local" ? (
+                  <div>
+                    <dt>Variabelen</dt>
+                    <dd>{diagnostics.envNames.length ? diagnostics.envNames.join(", ") : "geen gevonden"}</dd>
+                  </div>
+                ) : null}
                 {diagnostics.loadError ? (
                   <div>
                     <dt>Fout</dt>

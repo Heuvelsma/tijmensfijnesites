@@ -1,6 +1,6 @@
 import { SiteApp } from "@/components/SiteApp";
 import { readSeedList } from "@/lib/seed";
-import { hasBlobStore, isVercel, listSites } from "@/lib/store";
+import { hasBlobStore, isVercel, listSites, storageEnvNames } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 // Snapshots can take a while (browser start plus a slow site). Vercel honours this per route.
@@ -27,7 +27,7 @@ export default async function Page() {
       initialSites={sites}
       seedCount={seedCount}
       needsSetup={needsSetup}
-      diagnostics={{ storage: blob ? "blob" : onVercel ? "none" : "local", seedCount, loadError }}
+      diagnostics={{ storage: blob ? "blob" : onVercel ? "none" : "local", seedCount, loadError, envNames: storageEnvNames() }}
     />
   );
 }
