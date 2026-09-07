@@ -12,8 +12,18 @@ export function emptyIndex(): SiteIndex {
   return { version: 1, updatedAt: new Date().toISOString(), sites: [] };
 }
 
+/**
+ * Vercel names the token BLOB_READ_WRITE_TOKEN by default, but a custom prefix chosen
+ * while connecting the store gives something like FIJN_READ_WRITE_TOKEN. Accept both.
+ */
+export function blobToken(): string | undefined {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return process.env.BLOB_READ_WRITE_TOKEN;
+  const key = Object.keys(process.env).find((k) => k.endsWith("_READ_WRITE_TOKEN") && process.env[k]);
+  return key ? process.env[key] : undefined;
+}
+
 export function hasBlobStore(): boolean {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  return Boolean(blobToken());
 }
 
 export function isVercel(): boolean {

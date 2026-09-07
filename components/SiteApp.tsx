@@ -18,15 +18,22 @@ import { useSmoothScroll } from "./SmoothScroll";
 import { Ticker } from "./Ticker";
 import { Toasts, type Toast } from "./Toasts";
 
+type Diagnostics = {
+  storage: "blob" | "local" | "none";
+  seedCount: number;
+  loadError: string | null;
+};
+
 type Props = {
   initialSites: Site[];
   seedCount: number;
   needsSetup: boolean;
+  diagnostics: Diagnostics;
 };
 
 let toastSeq = 0;
 
-export function SiteApp({ initialSites, seedCount, needsSetup }: Props) {
+export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Props) {
   const router = useRouter();
   const [sites, setSites] = useState<Site[]>(initialSites);
   const [pending, setPending] = useState<PendingSite[]>([]);
@@ -354,6 +361,28 @@ export function SiteApp({ initialSites, seedCount, needsSetup }: Props) {
                   ? `Er staat een startlijst klaar met ${seedCount} sites, inclusief snapshots. Importeer die in één keer, of begin met een eigen link.`
                   : "Voeg je eerste site toe. Ik maak er meteen een snapshot van."}
               </p>
+              <dl className="status" aria-label="Status">
+                <div>
+                  <dt>Opslag</dt>
+                  <dd>
+                    {diagnostics.storage === "blob"
+                      ? "Vercel Blob gekoppeld"
+                      : diagnostics.storage === "local"
+                        ? "Lokaal (.data)"
+                        : "Niet gevonden"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Startlijst</dt>
+                  <dd>{diagnostics.seedCount > 0 ? `${diagnostics.seedCount} sites klaar` : "Niet gevonden"}</dd>
+                </div>
+                {diagnostics.loadError ? (
+                  <div>
+                    <dt>Fout</dt>
+                    <dd>{diagnostics.loadError}</dd>
+                  </div>
+                ) : null}
+              </dl>
               <div className="empty__actions">
                 {seedCount > 0 && !needsSetup ? (
                   <Button variant="solid" icon={<IconArrowRight size={16} />} onClick={handleImport} disabled={importing}>
