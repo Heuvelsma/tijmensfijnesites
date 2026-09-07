@@ -56,7 +56,7 @@ seed/                 startlijst: sites.json en shots/*.webp
 ## Dingen die je snel wilt aanpassen
 
 - **Kleuren en lijnen**: de tokens bovenin `app/globals.css` (`:root` en `:root[data-theme="dark"]`). De accentkleur is `--accent`.
-- **Titel**: `.hero__title` in `globals.css`. De horizontale versmalling zit in `--title-squeeze` (nu 0.82). Wil je een echt condensed font, wissel dan `DM_Sans` in `app/layout.tsx` voor bijvoorbeeld `Instrument_Sans` met `axes: ["wdth"]` en zet `--title-squeeze: 1`.
+- **Titel**: `.hero__title` in `globals.css`. De letters staan op hun normale breedte met strakke tracking. Wil je 'm smaller, zet `--title-squeeze` in `:root` op bijvoorbeeld 0.85. Een echt condensed font: wissel `DM_Sans` in `app/layout.tsx` voor bijvoorbeeld `Instrument_Sans` met `axes: ["wdth"]`.
 - **Lime krabbels en sticker**: de SVG paden staan in `components/Hero.tsx`, de stijl onder `.doodle` en `.hero__sticker` in `globals.css`. De onderstreping wordt door `placeUnderline` in `SiteApp.tsx` onder het laatste woord gezet.
 - **Achtergrondraster**: `.gridlines` in `globals.css` (4, 6 of 12 kolommen per breakpoint).
 - **Carrousel**: `components/Reel.tsx`, toont de 10 nieuwste sites.

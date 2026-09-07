@@ -23,6 +23,7 @@
 
   --font-sans: var(--font-dm), ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --pad: clamp(16px, 2.6vw, 40px);
+  --title-squeeze: 1;
   --radius: 8px;
   --nav-h: 56px;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -609,10 +610,10 @@ img {
   position: relative;
   z-index: 95;
   margin: 0;
-  font-size: clamp(38px, 9.4vw, 180px);
+  font-size: clamp(34px, 8.6vw, 165px);
   line-height: 0.95;
   font-weight: 800;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.05em;
   font-variation-settings: "opsz" 40;
   text-align: center;
   text-wrap: balance;
@@ -626,7 +627,7 @@ img {
 
 @media (max-width: 699.98px) {
   .hero__title {
-    font-size: 15vw;
+    font-size: 12.5vw;
   }
 }
 
@@ -637,7 +638,7 @@ img {
 
 .hero__line-inner {
   display: inline-block;
-  transform: scaleX(var(--title-squeeze, 0.82));
+  transform: scaleX(var(--title-squeeze, 1));
   transform-origin: center;
 }
 
@@ -664,7 +665,7 @@ img {
   height: clamp(34px, 4.2vw, 76px);
   top: -0.42em;
   left: -0.1em;
-  font-size: clamp(38px, 9.4vw, 180px);
+  font-size: clamp(34px, 8.6vw, 165px);
   transform: rotate(-12deg);
 }
 
@@ -684,7 +685,7 @@ img {
     stroke-width: 3.5;
   }
   .doodle--sparkle {
-    font-size: 15vw;
+    font-size: 12.5vw;
   }
 }
 

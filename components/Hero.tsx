@@ -37,7 +37,7 @@ export const Hero = forwardRef<HTMLHeadingElement, Props>(function Hero({ total,
       </div>
       <div className="hero__aside">
         <p className="hero__lede" data-words>
-          Alle mijn lekkere inspiratie sites, fijn op een rijtje
+          Al mijn lekkere inspiratie sites, fijn op een rijtje
         </p>
         {latest ? (
           <div className="hero__latest" data-fade>

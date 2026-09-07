@@ -43,7 +43,7 @@ function placeUnderline(scope: HTMLElement, lastWord: HTMLElement | undefined) {
   if (!svg || !title || !lastWord) return;
   // Work from layout offsets, which ignore the intro transform on the title. The line is squeezed
   // horizontally around its centre, so map the word's layout position to its visual position.
-  const squeeze = parseFloat(getComputedStyle(title).getPropertyValue("--title-squeeze")) || 0.82;
+  const squeeze = parseFloat(getComputedStyle(title).getPropertyValue("--title-squeeze")) || 1;
   const centre = title.offsetWidth / 2;
   const visualLeft = centre + (lastWord.offsetLeft - centre) * squeeze;
   const visualWidth = lastWord.offsetWidth * squeeze;
