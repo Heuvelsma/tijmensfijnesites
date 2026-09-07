@@ -1,0 +1,402 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { addSite, deleteSite, importSeed, refreshSnapshot, replaceImage } from "@/app/actions";
+import { EASE, gsap, prefersReducedMotion, ScrollTrigger, SplitText, useGSAP } from "@/lib/gsap";
+import type { Site } from "@/lib/types";
+import { domainOf } from "@/lib/url";
+import { AddSheet } from "./AddSheet";
+import { Button } from "./Button";
+import { Grid } from "./Grid";
+import { Hero } from "./Hero";
+import { Intro } from "./Intro";
+import { Nav } from "./Nav";
+import { IconArrowRight, IconArrowUp, IconPlus } from "./icons";
+import type { PendingSite } from "./SiteCard";
+import { useSmoothScroll } from "./SmoothScroll";
+import { Ticker } from "./Ticker";
+import { Toasts, type Toast } from "./Toasts";
+
+type Props = {
+  initialSites: Site[];
+  seedCount: number;
+  needsSetup: boolean;
+};
+
+let toastSeq = 0;
+
+export function SiteApp({ initialSites, seedCount, needsSetup }: Props) {
+  const router = useRouter();
+  const [sites, setSites] = useState<Site[]>(initialSites);
+  const [pending, setPending] = useState<PendingSite[]>([]);
+  const [busyIds, setBusyIds] = useState<Set<string>>(() => new Set());
+  const [query, setQuery] = useState("");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [introDone, setIntroDone] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  const root = useRef<HTMLDivElement>(null);
+  const introRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const lenis = useSmoothScroll();
+
+  // The server re-renders after every mutation; keep local state in step with it.
+  const [seenInitial, setSeenInitial] = useState(initialSites);
+  if (initialSites !== seenInitial) {
+    setSeenInitial(initialSites);
+    setSites(initialSites);
+  }
+
+  const visibleIds = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return new Set(sites.map((s) => s.id));
+    return new Set(sites.filter((s) => [s.title, s.domain, s.url].some((v) => v.toLowerCase().includes(q))).map((s) => s.id));
+  }, [sites, query]);
+
+  const toast = useCallback((text: string, kind: Toast["kind"] = "ok") => {
+    const id = ++toastSeq;
+    setToasts((t) => [...t, { id, text, kind }]);
+    window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3600);
+  }, []);
+
+  const setBusy = (id: string, on: boolean) =>
+    setBusyIds((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+
+  /* ---------------- actions ---------------- */
+
+  const runAdd = useCallback(
+    async (url: string, key: string) => {
+      const result = await addSite(url);
+      if (result.ok) {
+        setPending((p) => p.filter((x) => x.key !== key));
+        setSites((prev) => [result.data, ...prev.filter((s) => s.id !== result.data.id)]);
+        if (result.warning) toast(result.warning, "error");
+        else toast(`Toegevoegd: ${result.data.title}`);
+      } else {
+        setPending((p) => p.map((x) => (x.key === key ? { ...x, status: "error", message: result.error } : x)));
+      }
+    },
+    [toast],
+  );
+
+  const handleAdd = (url: string) => {
+    setSheetOpen(false);
+    const key = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setPending((p) => [{ key, url, domain: domainOf(url), status: "working" }, ...p]);
+    window.setTimeout(() => {
+      if (lenis.current) lenis.current.scrollTo("#grid", { offset: -90 });
+      else document.getElementById("grid")?.scrollIntoView({ behavior: "smooth" });
+    }, 250);
+    void runAdd(url, key);
+  };
+
+  const handleRetry = (item: PendingSite) => {
+    setPending((p) => p.map((x) => (x.key === item.key ? { ...x, status: "working", message: undefined } : x)));
+    void runAdd(item.url, item.key);
+  };
+
+  const handleDismiss = (item: PendingSite) => setPending((p) => p.filter((x) => x.key !== item.key));
+
+  const handleDelete = async (site: Site) => {
+    const snapshot = sites;
+    setSites((prev) => prev.filter((s) => s.id !== site.id));
+    const result = await deleteSite(site.id);
+    if (result.ok) toast(`Verwijderd: ${site.title}`);
+    else {
+      setSites(snapshot);
+      toast(result.error, "error");
+    }
+  };
+
+  const handleRefresh = async (site: Site) => {
+    setBusy(site.id, true);
+    const result = await refreshSnapshot(site.id);
+    setBusy(site.id, false);
+    if (result.ok) {
+      setSites((prev) => prev.map((s) => (s.id === site.id ? result.data : s)));
+      toast(`Nieuwe snapshot: ${site.title}`);
+    } else toast(result.error, "error");
+  };
+
+  const handleReplace = async (site: Site, file: File) => {
+    setBusy(site.id, true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const result = await replaceImage(site.id, fd);
+    setBusy(site.id, false);
+    if (result.ok) {
+      setSites((prev) => prev.map((s) => (s.id === site.id ? result.data : s)));
+      toast(`Afbeelding vervangen: ${site.title}`);
+    } else toast(result.error, "error");
+  };
+
+  const handleImport = async () => {
+    setImporting(true);
+    const result = await importSeed();
+    setImporting(false);
+    if (result.ok) {
+      toast(`${result.data.added} sites geïmporteerd`);
+      router.refresh();
+    } else toast(result.error, "error");
+  };
+
+  /* ---------------- intro choreography ---------------- */
+
+  useGSAP(
+    () => {
+      const intro = introRef.current;
+      const title = titleRef.current;
+      const nav = navRef.current;
+      const scope = root.current;
+      if (!intro || !title || !nav || !scope) return;
+
+      intro.classList.add("is-js");
+      const reduce = prefersReducedMotion();
+      document.body.classList.add("is-locked");
+      lenis.current?.stop();
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+      window.scrollTo(0, 0);
+
+      // Cards start hidden so the grid can reveal on scroll once the curtain is gone.
+      const cards = scope.querySelectorAll("[data-card]");
+      if (cards.length) gsap.set(cards, { opacity: 0, y: 48 });
+
+      let cancelled = false;
+      let split: SplitText | undefined;
+      let words: SplitText | undefined;
+
+      const finish = () => {
+        intro.style.display = "none";
+        title.classList.add("is-settled");
+        document.body.classList.remove("is-locked");
+        lenis.current?.start();
+        setIntroDone(true);
+
+        // Title drifts and fades as you scroll into the grid.
+        const hero = scope.querySelector(".hero");
+        if (hero && !reduce) {
+          gsap.to(title, {
+            yPercent: 22,
+            opacity: 0.25,
+            ease: "none",
+            scrollTrigger: { trigger: hero, start: "top top", end: "bottom top", scrub: true },
+          });
+        }
+        ScrollTrigger.refresh();
+      };
+
+      const run = async () => {
+        await document.fonts.ready;
+        if (cancelled) return;
+
+        const lines = title.querySelectorAll("[data-split]");
+        split = SplitText.create(lines, { type: "chars", mask: "chars", charsClass: "char" });
+        title.classList.add("is-ready");
+        const lede = scope.querySelector("[data-words]");
+        words = lede ? SplitText.create(lede, { type: "words", mask: "words", wordsClass: "word" }) : undefined;
+        const fades = scope.querySelectorAll("[data-fade]");
+        const counter = intro.querySelector<HTMLElement>(".intro__counter");
+        const meta = intro.querySelector(".intro__meta");
+
+        if (reduce) {
+          finish();
+          return;
+        }
+
+        const rect = title.getBoundingClientRect();
+        const dy = window.innerHeight / 2 - (rect.top + rect.height / 2);
+
+        gsap.set(title, { y: dy });
+        gsap.set(split.chars, { yPercent: 115 });
+        if (words) gsap.set(words.words, { yPercent: 115 });
+        if (fades.length) gsap.set(fades, { opacity: 0, y: 14 });
+        gsap.set(nav, { opacity: 0, y: -18 });
+
+        const num = { v: 0 };
+        const tl = gsap.timeline({ defaults: { ease: EASE.out }, onComplete: finish });
+        tl.to(num, {
+          v: 100,
+          duration: 1.6,
+          ease: "power2.inOut",
+          onUpdate: () => {
+            if (counter) counter.textContent = String(Math.round(num.v)).padStart(3, "0");
+          },
+        }, 0)
+          .to(split.chars, { yPercent: 0, duration: 1.15, stagger: { each: 0.026, from: "start" } }, 0.2)
+          .to(meta, { opacity: 0, duration: 0.45, ease: "power2.out" }, 1.55)
+          .to(title, { y: 0, duration: 1.3, ease: EASE.inOut }, 1.65)
+          .to(intro, { yPercent: -100, duration: 1.3, ease: EASE.inOut }, 1.65)
+          .to(nav, { opacity: 1, y: 0, duration: 1.1 }, 2.45);
+        if (words) tl.to(words.words, { yPercent: 0, duration: 1, stagger: 0.018 }, 2.45);
+        if (fades.length) tl.to(fades, { opacity: 1, y: 0, duration: 1, stagger: 0.12 }, 2.6);
+      };
+
+      void run();
+
+      return () => {
+        cancelled = true;
+        split?.revert();
+        words?.revert();
+        document.body.classList.remove("is-locked");
+      };
+    },
+    { scope: root },
+  );
+
+  /* ---------------- grid reveal + parallax ---------------- */
+
+  useGSAP(
+    () => {
+      const scope = root.current;
+      if (!scope || !introDone) return;
+
+      // Drop triggers that belong to cards which are no longer in the DOM.
+      ScrollTrigger.getAll().forEach((st) => {
+        const el = st.trigger as Element | undefined;
+        if (el && !el.isConnected) st.kill();
+      });
+
+      const fresh = gsap.utils.toArray<HTMLElement>("[data-card]:not([data-revealed])", scope);
+      if (fresh.length) {
+        fresh.forEach((c) => (c.dataset.revealed = "1"));
+        if (prefersReducedMotion()) {
+          gsap.set(fresh, { clearProps: "opacity,transform" });
+        } else {
+          gsap.set(fresh, { opacity: 0, y: 48 });
+          ScrollTrigger.batch(fresh, {
+            start: "top 94%",
+            once: true,
+            onEnter: (batch) =>
+              gsap.to(batch, { opacity: 1, y: 0, duration: 1.25, ease: EASE.out, stagger: 0.075, overwrite: true }),
+          });
+          fresh.forEach((card) => {
+            const layer = card.querySelector("[data-parallax]");
+            if (!layer) return;
+            gsap.fromTo(
+              layer,
+              { yPercent: -3.6, scale: 1.08 },
+              {
+                yPercent: 3.6,
+                scale: 1.08,
+                ease: "none",
+                scrollTrigger: { trigger: card, start: "top bottom", end: "bottom top", scrub: 0.4 },
+              },
+            );
+          });
+        }
+      }
+      ScrollTrigger.refresh();
+    },
+    { scope: root, dependencies: [introDone, sites, pending] },
+  );
+
+  /* ---------------- search transitions ---------------- */
+
+  const firstQuery = useRef(true);
+  useGSAP(
+    () => {
+      if (firstQuery.current) {
+        firstQuery.current = false;
+        return;
+      }
+      const scope = root.current;
+      if (!scope) return;
+      const shown = gsap.utils.toArray<HTMLElement>("[data-card]:not(.is-hidden)", scope);
+      if (!prefersReducedMotion()) {
+        gsap.fromTo(shown, { opacity: 0.25, y: 10 }, { opacity: 1, y: 0, duration: 0.7, ease: EASE.out, stagger: 0.015, overwrite: "auto" });
+      }
+      ScrollTrigger.refresh();
+    },
+    { scope: root, dependencies: [query] },
+  );
+
+  const openSheet = () => setSheetOpen(true);
+  const toTop = () => {
+    if (lenis.current) lenis.current.scrollTo(0);
+    else window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const latest = sites[0] ? { title: sites[0].title, createdAt: sites[0].createdAt } : null;
+  const isEmpty = sites.length === 0 && pending.length === 0;
+
+  return (
+    <div ref={root} className="page">
+      <Intro ref={introRef} />
+      <Nav ref={navRef} query={query} onQuery={setQuery} total={sites.length} shown={visibleIds.size} onAdd={openSheet} />
+
+      <main>
+        <Hero ref={titleRef} total={sites.length} latest={latest} />
+        <Ticker total={sites.length} />
+
+        <div id="grid">
+          {needsSetup ? (
+            <div className="notice" data-fade style={{ marginTop: 32 }}>
+              <strong>Nog even koppelen.</strong> Deze deployment heeft nog geen opslag. Maak in Vercel onder <em>Storage</em> een{" "}
+              <em>Blob</em> store aan, koppel die aan dit project en deploy opnieuw. Daarna verschijnt hier de knop om de startlijst te
+              importeren.
+            </div>
+          ) : null}
+
+          {isEmpty ? (
+            <section className="empty" data-fade>
+              <h2>Nog helemaal leeg. Dat is ook een soort inspiratie.</h2>
+              <p>
+                {seedCount > 0
+                  ? `Er staat een startlijst klaar met ${seedCount} sites, inclusief snapshots. Importeer die in één keer, of begin met een eigen link.`
+                  : "Voeg je eerste site toe. Ik maak er meteen een snapshot van."}
+              </p>
+              <div className="empty__actions">
+                {seedCount > 0 && !needsSetup ? (
+                  <Button variant="solid" icon={<IconArrowRight size={16} />} onClick={handleImport} disabled={importing}>
+                    {importing ? "Bezig met importeren…" : `Startlijst importeren (${seedCount})`}
+                  </Button>
+                ) : null}
+                <Button icon={<IconPlus size={16} />} onClick={openSheet}>
+                  Site toevoegen
+                </Button>
+              </div>
+            </section>
+          ) : (
+            <Grid
+              ref={gridRef}
+              sites={sites}
+              visibleIds={visibleIds}
+              pending={pending}
+              busyIds={busyIds}
+              query={query}
+              onDelete={handleDelete}
+              onRefresh={handleRefresh}
+              onReplace={handleReplace}
+              onRetry={handleRetry}
+              onDismiss={handleDismiss}
+            />
+          )}
+        </div>
+      </main>
+
+      <footer className="footer">
+        <span>
+          <strong>Tijmens Fijne Sites</strong> · gebouwd met te veel tabbladen open
+        </span>
+        <span>
+          {sites.length} {sites.length === 1 ? "site" : "sites"}, nul notities
+        </span>
+        <Button size="sm" icon={<IconArrowUp size={15} />} onClick={toTop}>
+          Naar boven
+        </Button>
+      </footer>
+
+      <AddSheet open={sheetOpen} onClose={() => setSheetOpen(false)} onSubmit={handleAdd} />
+      <Toasts items={toasts} />
+    </div>
+  );
+}
