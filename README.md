@@ -18,7 +18,7 @@ Op een lege site zie je de knop **Startlijst importeren**. Die zet de 53 sites u
 ## Live zetten op Vercel
 
 1. Importeer deze repo in Vercel (New Project, framework wordt automatisch herkend).
-2. Ga in het project naar **Storage**, kies **Create Database → Blob** en koppel de store aan het project. Vercel zet zelf `BLOB_READ_WRITE_TOKEN` in de environment variables.
+2. Ga in het project naar **Storage**, kies **Create Database → Blob** en koppel de store aan het project (Production aangevinkt). Privé of public maakt niet uit: bij een privé store lopen de snapshots via `/api/blob/…`, bij een public store via de blob URL. Vercel zet zelf de variabelen (`BLOB_STORE_ID` met OIDC, of `BLOB_READ_WRITE_TOKEN`).
 3. Zet bij **Settings → Environment Variables** het wachtwoord: `SITE_PASSWORD=jouwwachtwoord`. Zonder wachtwoord staat de site open voor iedereen met de URL.
 4. Deploy (of redeploy na het koppelen van de store).
 5. Open de site, vul het wachtwoord in en klik **Startlijst importeren**.
@@ -31,7 +31,8 @@ Snapshots op Vercel worden gemaakt met `@sparticuz/chromium` (een headless Chrom
 | ----------------------- | --------------------------------------------------------------------- |
 | `SITE_PASSWORD`         | Wachtwoord voor de poort. Eén keer invullen per apparaat (cookie, 1 jaar). |
 | `AUTH_SECRET`           | Optioneel. Eigen geheim voor de cookie handtekening.                    |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob. Automatisch gezet als je de store koppelt.                |
+| `BLOB_STORE_ID` / `BLOB_READ_WRITE_TOKEN` | Vercel Blob. Automatisch gezet als je de store koppelt (OIDC of vaste token). |
+| `BLOB_ACCESS`           | Optioneel: `private` of `public`. Zonder deze waarde probeert de app het zelf uit. |
 | `CHROME_PATH`           | Optioneel, alleen lokaal. Pad naar een Chromium of Chrome binary.      |
 
 Zie `.env.example`.
@@ -44,13 +45,14 @@ app/
   actions.ts          server actions: toevoegen, verwijderen, snapshot vernieuwen, afbeelding vervangen, import
   unlock/             wachtwoordpagina
   api/shots/[file]    serveert lokale snapshots (alleen zonder Blob)
+  api/blob/[...path]  streamt snapshots uit een privé Blob store
   globals.css         alle styling: tokens, dark en light, componenten
 components/
   SiteApp.tsx         client root: state, zoeken, intro en scroll choreografie (GSAP)
   Intro.tsx, Nav.tsx, Hero.tsx, Ticker.tsx, Grid.tsx, SiteCard.tsx, AddSheet.tsx, Button.tsx, ThemeToggle.tsx
 lib/
   screenshot.ts       snapshot maken (Chromium, Microlink als vangnet)
-  store.ts            opslag: Vercel Blob (index.json + afbeeldingen) of lokaal in .data/
+  store.ts            opslag: Vercel Blob (getimestampte index + afbeeldingen) of lokaal in .data/
   auth.ts             cookie handtekening
   seed.ts             import van de startlijst
 proxy.ts              wachtwoordpoort (Next 16 proxy, voorheen middleware)

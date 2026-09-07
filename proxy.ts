@@ -16,6 +16,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Local snapshot files are fetched by the image optimizer without cookies, so they stay outside the gate.
-  matcher: ["/((?!_next/static|_next/image|api/shots|favicon.ico|icon.svg|manifest.webmanifest).*)"],
+  // Snapshot files are fetched by the image optimizer without cookies, so they stay outside the gate.
+  matcher: ["/((?!_next/static|_next/image|api/shots|api/blob|favicon.ico|icon.svg|manifest.webmanifest).*)"],
 };
