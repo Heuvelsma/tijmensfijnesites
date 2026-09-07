@@ -3,7 +3,7 @@
 type Props = { total: number };
 
 export function Ticker({ total }: Props) {
-  const items = ["Tijmens Fijne Sites", `${total} sites`, "Bewaard, niet afgeklikt", "Webinspiratie", "Klik en kijk", "Snapshots van de homepage"];
+  const items = ["Tijmens Fijne Sites", `${total} sites`, "Webinspiratie", "Klik en kijk", "Snapshots van de homepage"];
   const seq = [...items, ...items];
   return (
     <div className="ticker" aria-hidden data-fade>

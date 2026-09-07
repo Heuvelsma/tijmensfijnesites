@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState, type MouseEvent } from "react";
+import { useRef, useState } from "react";
 import type { Site } from "@/lib/types";
 import { IconArrowUpRight, IconCheck, IconRefresh, IconUpload, IconX } from "./icons";
 
@@ -26,17 +26,8 @@ type CardProps = {
 export function SiteCard({ site, index, busy, hidden, onDelete, onRefresh, onReplace }: CardProps) {
   const [confirming, setConfirming] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const frameRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const timer = useRef<number | null>(null);
-
-  const onMove = (e: MouseEvent<HTMLDivElement>) => {
-    const el = frameRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    el.style.setProperty("--mx", `${((e.clientX - r.left) / r.width) * 100}%`);
-    el.style.setProperty("--my", `${((e.clientY - r.top) / r.height) * 100}%`);
-  };
 
   const askDelete = () => {
     setConfirming(true);
@@ -47,8 +38,8 @@ export function SiteCard({ site, index, busy, hidden, onDelete, onRefresh, onRep
   return (
     <article className={`card${confirming ? " is-confirming" : ""}${hidden ? " is-hidden" : ""}`} data-card data-id={site.id}>
       <a className="card__link" href={site.url} target="_blank" rel="noopener noreferrer" aria-label={`${site.title} openen`}>
-        <div className="card__frame" ref={frameRef} onMouseMove={onMove}>
-          <div className="card__parallax" data-parallax>
+        <div className="card__frame">
+          <div className="card__media">
             {site.image ? (
               <Image
                 className={`card__img${loaded ? " is-loaded" : ""}`}

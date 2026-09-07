@@ -208,6 +208,20 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
 
         const lines = title.querySelectorAll("[data-split]");
         split = SplitText.create(lines, { type: "chars", mask: "chars", charsClass: "char" });
+        // Masks clip descenders when the line height is tight; give them room without moving anything.
+        split.masks.forEach((m) => {
+          const el = m as HTMLElement;
+          el.style.padding = "0.12em 0.04em 0.2em";
+          el.style.margin = "-0.12em -0.04em -0.2em";
+        });
+        // The Dutch "ij" gets the accent colour.
+        split.chars.forEach((c, i, all) => {
+          const next = all[i + 1];
+          if (c.textContent === "i" && next?.textContent === "j") {
+            c.classList.add("is-accent");
+            next.classList.add("is-accent");
+          }
+        });
         title.classList.add("is-ready");
         const lede = scope.querySelector("[data-words]");
         words = lede ? SplitText.create(lede, { type: "words", mask: "words", wordsClass: "word" }) : undefined;
@@ -221,9 +235,12 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
         }
 
         const rect = title.getBoundingClientRect();
-        const dy = window.innerHeight / 2 - (rect.top + rect.height / 2);
+        // Start a touch below the middle of the screen, then rise into place while the curtain lifts.
+        const dy = window.innerHeight * 0.56 - (rect.top + rect.height / 2);
+        const sticker = scope.querySelector("[data-sticker]");
 
         gsap.set(title, { y: dy });
+        if (sticker) gsap.set(sticker, { scale: 0, rotation: -30, opacity: 0 });
         gsap.set(split.chars, { yPercent: 115 });
         if (words) gsap.set(words.words, { yPercent: 115 });
         if (fades.length) gsap.set(fades, { opacity: 0, y: 14 });
@@ -244,6 +261,7 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
           .to(title, { y: 0, duration: 1.3, ease: EASE.inOut }, 1.65)
           .to(intro, { yPercent: -100, duration: 1.3, ease: EASE.inOut }, 1.65)
           .to(nav, { opacity: 1, y: 0, duration: 1.1 }, 2.45);
+        if (sticker) tl.to(sticker, { scale: 1, rotation: -8, opacity: 1, duration: 0.9, ease: "back.out(2.2)" }, 2.55);
         if (words) tl.to(words.words, { yPercent: 0, duration: 1, stagger: 0.018 }, 2.45);
         if (fades.length) tl.to(fades, { opacity: 1, y: 0, duration: 1, stagger: 0.12 }, 2.6);
       };
@@ -260,7 +278,7 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
     { scope: root },
   );
 
-  /* ---------------- grid reveal + parallax ---------------- */
+  /* ---------------- grid reveal ---------------- */
 
   useGSAP(
     () => {
@@ -285,20 +303,6 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
             once: true,
             onEnter: (batch) =>
               gsap.to(batch, { opacity: 1, y: 0, duration: 1.25, ease: EASE.out, stagger: 0.075, overwrite: true }),
-          });
-          fresh.forEach((card) => {
-            const layer = card.querySelector("[data-parallax]");
-            if (!layer) return;
-            gsap.fromTo(
-              layer,
-              { yPercent: -3.6, scale: 1.08 },
-              {
-                yPercent: 3.6,
-                scale: 1.08,
-                ease: "none",
-                scrollTrigger: { trigger: card, start: "top bottom", end: "bottom top", scrub: 0.4 },
-              },
-            );
           });
         }
       }
@@ -421,10 +425,10 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
 
       <footer className="footer">
         <span>
-          <strong>Tijmens Fijne Sites</strong> · gebouwd met te veel tabbladen open
+          <strong>Tijmens Fijne Sites</strong>
         </span>
         <span>
-          {sites.length} {sites.length === 1 ? "site" : "sites"}, nul notities
+          {sites.length} {sites.length === 1 ? "site" : "sites"}
         </span>
         <Button size="sm" icon={<IconArrowUp size={15} />} onClick={toTop}>
           Naar boven
