@@ -791,7 +791,7 @@ img {
 
 .gridlines span {
   border-left: 1px solid var(--line);
-  opacity: 0.55;
+  opacity: 0.3;
 }
 
 .gridlines span:nth-child(n + 5) {
@@ -805,6 +805,7 @@ img {
   bottom: 0;
   right: 0;
   border-left: 1px solid var(--line);
+  opacity: 0.3;
 }
 
 @media (min-width: 700px) {
@@ -837,20 +838,15 @@ img {
 /* ---------- reel with the latest additions ---------- */
 
 .reel {
-  padding: clamp(28px, 4vw, 56px) 0 clamp(20px, 3vw, 40px);
+  padding: clamp(28px, 4vw, 56px) 0 clamp(16px, 2.5vw, 32px);
 }
 
 .reel__head {
   display: flex;
-  align-items: flex-end;
+  align-items: baseline;
   justify-content: space-between;
   gap: 16px;
   padding: 0 var(--pad) 18px;
-}
-
-.reel__title {
-  display: grid;
-  gap: 6px;
 }
 
 .reel__count {
@@ -859,75 +855,81 @@ img {
   font-variant-numeric: tabular-nums;
 }
 
-.reel__nav {
-  display: flex;
-  gap: 8px;
-}
-
-.reel__arrow {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1px solid var(--line-strong);
-  display: grid;
-  place-items: center;
-  color: var(--ink);
-  transition: background-color 0.4s var(--ease-out), color 0.4s var(--ease-out), border-color 0.4s var(--ease-out),
-    transform 0.4s var(--ease-out);
-}
-
-.reel__arrow:first-child svg {
-  transform: rotate(180deg);
-}
-
-.reel__arrow:hover {
-  background: var(--ink);
-  color: var(--bg);
-  border-color: var(--ink);
-}
-
-.reel__arrow:active {
-  transform: scale(0.94);
-}
-
 .reel__track {
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x mandatory;
-  scroll-padding-inline: var(--pad);
-  padding: 4px var(--pad) 12px;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
+  padding: 18px 0 26px;
+  mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
 }
 
-.reel__track::-webkit-scrollbar {
-  display: none;
+.reel__belt {
+  display: flex;
+  width: max-content;
+  animation: reel-move var(--reel-duration, 80s) linear infinite;
+  will-change: transform;
+}
+
+.reel__track:hover .reel__belt {
+  animation-play-state: paused;
+}
+
+@keyframes reel-move {
+  to {
+    transform: translateX(calc(-100% / var(--reel-copies, 2)));
+  }
+}
+
+.reel__set {
+  display: flex;
+  gap: 18px;
+  padding-right: 18px;
 }
 
 .reel__card {
   position: relative;
   flex: 0 0 auto;
-  width: min(82vw, 520px);
-  scroll-snap-align: start;
+  width: min(72vw, 460px);
   border-radius: 20px;
   overflow: hidden;
   background: var(--frame);
   box-shadow: inset 0 0 0 1px var(--line);
   isolation: isolate;
   display: block;
+  transform: rotate(var(--tilt, 0deg)) translateY(var(--lift, 0));
+  transition: transform 0.9s var(--ease-out), box-shadow 0.9s var(--ease-out);
+}
+
+.reel__card:nth-child(4n + 1) {
+  --tilt: -2.2deg;
+  --lift: 6px;
+}
+.reel__card:nth-child(4n + 2) {
+  --tilt: 1.4deg;
+  --lift: -4px;
+}
+.reel__card:nth-child(4n + 3) {
+  --tilt: -1deg;
+  --lift: 2px;
+}
+.reel__card:nth-child(4n + 4) {
+  --tilt: 2.4deg;
+  --lift: -6px;
+}
+
+.reel__card:hover {
+  transform: rotate(0deg) translateY(-6px);
+  box-shadow: inset 0 0 0 1px var(--line), var(--shadow);
 }
 
 @media (min-width: 700px) {
   .reel__card {
-    width: min(46vw, 560px);
+    width: min(42vw, 500px);
   }
 }
 
 @media (min-width: 1100px) {
   .reel__card {
-    width: min(32vw, 620px);
+    width: min(30vw, 560px);
   }
 }
 
@@ -945,6 +947,15 @@ img {
 
 .reel__card:hover .reel__media img {
   transform: scale(1.04);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reel__belt {
+    animation: none;
+  }
+  .reel__track {
+    overflow-x: auto;
+  }
 }
 
 .reel__placeholder {
