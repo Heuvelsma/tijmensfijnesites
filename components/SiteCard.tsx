@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRef, useState } from "react";
 import type { Site } from "@/lib/types";
-import { IconArrowUpRight, IconCheck, IconRefresh, IconUpload, IconX } from "./icons";
+import { IconArrowUpRight, IconCheck, IconPencil, IconRefresh, IconUpload, IconX } from "./icons";
 
 export type PendingSite = {
   key: string;
@@ -21,9 +21,10 @@ type CardProps = {
   onDelete: (site: Site) => void;
   onRefresh: (site: Site) => void;
   onReplace: (site: Site, file: File) => void;
+  onEdit: (site: Site) => void;
 };
 
-export function SiteCard({ site, index, busy, hidden, onDelete, onRefresh, onReplace }: CardProps) {
+export function SiteCard({ site, index, busy, hidden, onDelete, onRefresh, onReplace, onEdit }: CardProps) {
   const [confirming, setConfirming] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -83,6 +84,16 @@ export function SiteCard({ site, index, busy, hidden, onDelete, onRefresh, onRep
           </>
         ) : (
           <>
+            <button
+              type="button"
+              className="tool"
+              onClick={() => onEdit(site)}
+              disabled={busy}
+              title="Adres of naam aanpassen"
+              aria-label="Adres of naam aanpassen"
+            >
+              <IconPencil size={13} stroke={2.2} />
+            </button>
             <button
               type="button"
               className={`tool${busy ? " is-busy" : ""}`}

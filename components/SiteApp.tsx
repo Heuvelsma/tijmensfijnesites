@@ -2,11 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { addSite, deleteSite, importSeed, refreshSnapshot, replaceImage } from "@/app/actions";
+import { addSite, deleteSite, importSeed, refreshSnapshot, replaceImage, updateSite } from "@/app/actions";
 import { EASE, gsap, prefersReducedMotion, ScrollTrigger, SplitText, useGSAP } from "@/lib/gsap";
 import type { Site } from "@/lib/types";
 import { domainOf } from "@/lib/url";
-import { AddSheet } from "./AddSheet";
+import { AddSheet, type SheetSubmit } from "./AddSheet";
 import { Button } from "./Button";
 import { Grid } from "./Grid";
 import { GridLines } from "./GridLines";
@@ -61,6 +61,8 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
   const [busyIds, setBusyIds] = useState<Set<string>>(() => new Set());
   const [query, setQuery] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [editing, setEditing] = useState<Site | null>(null);
+  const [sheetKey, setSheetKey] = useState(0);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [introDone, setIntroDone] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -115,6 +117,29 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
     },
     [toast],
   );
+
+  const handleSheet = (values: SheetSubmit) => {
+    if (editing) void handleEditSave(editing, values);
+    else handleAdd(values.url);
+  };
+
+  const handleEditSave = async (site: Site, values: SheetSubmit) => {
+    setSheetOpen(false);
+    setBusy(site.id, true);
+    const result = await updateSite(site.id, values);
+    setBusy(site.id, false);
+    if (result.ok) {
+      setSites((prev) => prev.map((s) => (s.id === site.id ? result.data : s)));
+      if (result.warning) toast(result.warning, "error");
+      else toast(`Aangepast: ${result.data.title}`);
+    } else toast(result.error, "error");
+  };
+
+  const handleEdit = (site: Site) => {
+    setEditing(site);
+    setSheetKey((k) => k + 1);
+    setSheetOpen(true);
+  };
 
   const handleAdd = (url: string) => {
     setSheetOpen(false);
@@ -363,7 +388,11 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
     { scope: root, dependencies: [query] },
   );
 
-  const openSheet = () => setSheetOpen(true);
+  const openSheet = () => {
+    setEditing(null);
+    setSheetKey((k) => k + 1);
+    setSheetOpen(true);
+  };
   const toTop = () => {
     if (lenis.current) lenis.current.scrollTo(0);
     else window.scrollTo({ top: 0, behavior: "smooth" });
@@ -451,6 +480,7 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
               onDelete={handleDelete}
               onRefresh={handleRefresh}
               onReplace={handleReplace}
+              onEdit={handleEdit}
               onRetry={handleRetry}
               onDismiss={handleDismiss}
             />
@@ -470,7 +500,7 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
         </Button>
       </footer>
 
-      <AddSheet open={sheetOpen} onClose={() => setSheetOpen(false)} onSubmit={handleAdd} />
+      <AddSheet open={sheetOpen} editing={editing} resetKey={sheetKey} onClose={() => setSheetOpen(false)} onSubmit={handleSheet} />
       <Toasts items={toasts} />
     </div>
   );

@@ -115,6 +115,50 @@ export async function replaceImage(id: string, formData: FormData): Promise<Acti
   }
 }
 
+export type SiteEdit = { url: string; title: string; refresh: boolean };
+
+/** Change the address and/or name of a site. A new snapshot is taken when asked (default when the URL changed). */
+export async function updateSite(id: string, edit: SiteEdit): Promise<ActionResult<Site>> {
+  try {
+    const store = await getStore();
+    const index = await store.readIndex();
+    const current = index.sites.find((s) => s.id === id);
+    if (!current) return { ok: false, error: "Site niet gevonden" };
+
+    const url = normalizeUrl(edit.url);
+    const clash = index.sites.find((s) => s.url === url && s.id !== id);
+    if (clash) return { ok: false, error: `Die URL staat al bij ${clash.title}` };
+
+    let image = current.image;
+    let title = edit.title.trim().slice(0, 60);
+    let warning: string | undefined;
+    const urlChanged = url !== current.url;
+
+    if (edit.refresh) {
+      try {
+        const capture = await captureSite(url);
+        image = await store.putImage(id, capture.image, capture.contentType);
+        if (!title) title = cleanTitle(capture.title, url);
+      } catch (err) {
+        console.warn("[updateSite] snapshot mislukt", err);
+        warning = "Adres opgeslagen, maar de snapshot lukte niet. De site houdt robots buiten, upload zelf een afbeelding.";
+        if (urlChanged) image = "";
+      }
+    }
+    if (!title) title = urlChanged ? cleanTitle(await fetchTitle(url).catch(() => ""), url) : current.title;
+
+    const updated: Site = { ...current, url, domain: domainOf(url), title, image };
+    await updateIndex((idx) => {
+      idx.sites = idx.sites.map((s) => (s.id === id ? updated : s));
+    });
+    if (image !== current.image && current.image) await store.deleteImage(current.image).catch(() => undefined);
+    revalidatePath("/");
+    return { ok: true, data: updated, warning };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
 export async function renameSite(id: string, title: string): Promise<ActionResult<Site>> {
   try {
     const clean = title.trim().slice(0, 60);

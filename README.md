@@ -1,6 +1,6 @@
 # Tijmens Fijne Sites
 
-Persoonlijk webinspiratie archief. Snapshots van homepages in een strak raster, elke snapshot is een link naar de site. Toevoegen, verwijderen, zoeken, dark en light, een carrousel met de laatste toevoegingen en een intro die de titel op z'n plek zet. Openbare site, geen wachtwoord.
+Persoonlijk webinspiratie archief. Snapshots van homepages in een strak raster, elke snapshot is een link naar de site. Toevoegen, adres of naam aanpassen, verwijderen, zoeken, dark en light, een carrousel met de laatste toevoegingen en een intro die de titel op z'n plek zet. Openbare site, geen wachtwoord.
 
 Gebouwd met Next.js 16, GSAP, Lenis en Vercel Blob. Lettertype DM Sans.
 
@@ -39,7 +39,7 @@ Zie `.env.example`.
 ```
 app/
   page.tsx            laadt de sites (server) en rendert SiteApp
-  actions.ts          server actions: toevoegen, verwijderen, snapshot vernieuwen, afbeelding vervangen, import
+  actions.ts          server actions: toevoegen, aanpassen, verwijderen, snapshot vernieuwen, afbeelding vervangen, import
   api/shots/[file]    serveert lokale snapshots (alleen zonder Blob)
   api/blob/[...path]  streamt snapshots uit een privé Blob store
   globals.css         alle styling: tokens, dark en light, componenten

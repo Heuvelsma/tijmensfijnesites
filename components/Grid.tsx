@@ -13,12 +13,13 @@ type Props = {
   onDelete: (site: Site) => void;
   onRefresh: (site: Site) => void;
   onReplace: (site: Site, file: File) => void;
+  onEdit: (site: Site) => void;
   onRetry: (item: PendingSite) => void;
   onDismiss: (item: PendingSite) => void;
 };
 
 export const Grid = forwardRef<HTMLDivElement, Props>(function Grid(
-  { sites, visibleIds, pending, busyIds, query, onDelete, onRefresh, onReplace, onRetry, onDismiss },
+  { sites, visibleIds, pending, busyIds, query, onDelete, onRefresh, onReplace, onEdit, onRetry, onDismiss },
   ref,
 ) {
   const shown = sites.filter((s) => visibleIds.has(s.id)).length;
@@ -44,6 +45,7 @@ export const Grid = forwardRef<HTMLDivElement, Props>(function Grid(
             onDelete={onDelete}
             onRefresh={onRefresh}
             onReplace={onReplace}
+            onEdit={onEdit}
           />
         ))}
       </div>

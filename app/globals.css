@@ -1670,6 +1670,63 @@ img {
   border-color: var(--ink);
 }
 
+.field--small input {
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  padding: 8px 0 10px;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.check input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.check__box {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid var(--line-strong);
+  display: grid;
+  place-items: center;
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.check__box::after {
+  content: "";
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid var(--accent-ink);
+  border-bottom: 2px solid var(--accent-ink);
+  transform: rotate(-45deg) scale(0);
+  transition: transform 0.3s var(--ease-out);
+  margin-top: -2px;
+}
+
+.check input:checked + .check__box {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.check input:checked + .check__box::after {
+  transform: rotate(-45deg) scale(1);
+}
+
+.check input:focus-visible + .check__box {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .field__hint {
   font-size: 13px;
   color: var(--muted);

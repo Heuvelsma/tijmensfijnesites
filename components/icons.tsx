@@ -81,3 +81,10 @@ export const IconMoon = ({ size, stroke }: P) => (
     <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />
   </svg>
 );
+
+export const IconPencil = ({ size, stroke }: P) => (
+  <svg {...base(size, stroke)}>
+    <path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z" />
+    <path d="m13.5 6.5 3 3" />
+  </svg>
+);
