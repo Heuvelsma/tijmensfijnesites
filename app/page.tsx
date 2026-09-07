@@ -1,6 +1,6 @@
 import { SiteApp } from "@/components/SiteApp";
-import { readSeedList } from "@/lib/seed";
-import { hasBlobStore, isVercel, listSites, storageEnvNames } from "@/lib/store";
+import { fixSeedOrder, readSeedList } from "@/lib/seed";
+import { hasBlobStore, isVercel, listSites, storageEnvNames, updateIndex } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 // Snapshots can take a while (browser start plus a slow site). Vercel honours this per route.
@@ -11,7 +11,7 @@ export default async function Page() {
   const blob = hasBlobStore();
   const needsSetup = onVercel && !blob;
   let loadError: string | null = null;
-  const [sites, seedCount] = await Promise.all([
+  const [loaded, seedCount] = await Promise.all([
     needsSetup
       ? Promise.resolve([])
       : listSites().catch((err: unknown) => {
@@ -22,6 +22,20 @@ export default async function Page() {
       .then((l) => l.length)
       .catch(() => 0),
   ]);
+  let sites = loaded;
+  // Stores that imported the start list in the old order get flipped once, then never again.
+  const repaired = fixSeedOrder(sites);
+  if (repaired) {
+    try {
+      await updateIndex((index) => {
+        index.sites = repaired;
+      });
+      sites = repaired;
+    } catch (err) {
+      console.warn("[page] volgorde herstellen mislukt", err);
+    }
+  }
+
   return (
     <SiteApp
       initialSites={sites}

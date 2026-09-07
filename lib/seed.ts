@@ -33,12 +33,14 @@ export async function importSeed(): Promise<{ added: number; skipped: number }> 
   const fresh = entries.filter((e) => !known.has(e.url));
 
   const added: Site[] = [];
+  const base = Date.now() - fresh.length * 1000;
   // Upload in small batches so we stay friendly to the store and to function time limits.
   for (let i = 0; i < fresh.length; i += 6) {
     const batch = fresh.slice(i, i + 6);
     const results = await Promise.all(
-      batch.map(async (entry) => {
+      batch.map(async (entry, j) => {
         const id = makeId();
+        const position = i + j;
         let image = "";
         if (entry.file) {
           const data = await readSeedImage(entry.file);
@@ -50,7 +52,8 @@ export async function importSeed(): Promise<{ added: number; skipped: number }> 
           domain: domainOf(entry.url),
           title: cleanTitle(entry.title, entry.url),
           image,
-          createdAt: new Date().toISOString(),
+          // Later in the list means added later, so the last entry ends up on top.
+          createdAt: new Date(base + position * 1000).toISOString(),
         };
         return site;
       }),
@@ -60,9 +63,34 @@ export async function importSeed(): Promise<{ added: number; skipped: number }> 
 
   if (added.length) {
     await updateIndex((index) => {
-      // Keep the original order of the start list, newest additions first overall.
-      index.sites = [...added, ...index.sites];
+      // The start list reads oldest to newest, the site shows newest first: reverse it on the way in.
+      index.sites = [...added.reverse(), ...index.sites];
     });
   }
   return { added: added.length, skipped: entries.length - fresh.length };
+}
+
+/**
+ * One-off repair for stores that imported the start list before it was reversed. If the seed
+ * sites still appear in their original order, flip that block in place and leave everything
+ * else (newer additions) where it is. Returns null when nothing needs to change.
+ */
+export function fixSeedOrder(sites: Site[]): Site[] | null {
+  const seedUrls = (seedList as SeedEntry[]).map((e) => e.url);
+  const seedSet = new Set(seedUrls);
+  const positions: number[] = [];
+  sites.forEach((s, i) => {
+    if (seedSet.has(s.url)) positions.push(i);
+  });
+  if (positions.length < 20) return null;
+  const currentOrder = positions.map((i) => sites[i].url);
+  const expectedOriginal = seedUrls.filter((u) => currentOrder.includes(u));
+  const isOriginalOrder = currentOrder.every((u, k) => u === expectedOriginal[k]);
+  if (!isOriginalOrder) return null;
+  const reversed = positions.map((i) => sites[i]).reverse();
+  const next = [...sites];
+  positions.forEach((i, k) => {
+    next[i] = reversed[k];
+  });
+  return next;
 }
