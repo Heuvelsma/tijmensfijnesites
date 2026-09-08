@@ -3,9 +3,13 @@ import { cookies } from "next/headers";
 
 export const ADMIN_COOKIE = "tfs_admin";
 
-/** Set ADMIN_PASSWORD in Vercel. The default only exists so a fresh install works out of the box. */
+/** Comes from ADMIN_PASSWORD. Without it nobody can log in and the archive is read only. */
 export function adminPassword(): string {
-  return process.env.ADMIN_PASSWORD || "secret";
+  return process.env.ADMIN_PASSWORD || "";
+}
+
+export function adminConfigured(): boolean {
+  return adminPassword().length > 0;
 }
 
 function hex(buf: ArrayBuffer): string {
@@ -33,6 +37,7 @@ export function safeEqual(a: string, b: string): boolean {
 }
 
 export async function isAdminRequest(): Promise<boolean> {
+  if (!adminConfigured()) return false;
   const jar = await cookies();
   const token = jar.get(ADMIN_COOKIE)?.value;
   if (!token) return false;

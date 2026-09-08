@@ -19,8 +19,11 @@ Op een lege site zie je de knop **Startlijst importeren**. Die zet de 53 sites u
 
 1. Importeer deze repo in Vercel (New Project, framework wordt automatisch herkend).
 2. Ga in het project naar **Storage**, kies **Create Database → Blob** en koppel de store aan het project (Production aangevinkt). Privé of public maakt niet uit: bij een privé store lopen de snapshots via `/api/blob/…`, bij een public store via de blob URL. Vercel zet zelf de variabelen (`BLOB_STORE_ID` met OIDC, of `BLOB_READ_WRITE_TOKEN`).
-3. Deploy (of redeploy na het koppelen van de store).
-4. Open de site en klik **Startlijst importeren**.
+3. Zet bij **Settings → Environment Variables** een `ADMIN_PASSWORD` (zie hieronder).
+4. Deploy (of redeploy na het koppelen van de store en het zetten van de variabele).
+5. Open de site, log in via het slotje en klik **Startlijst importeren**.
+
+Lokaal: zet `ADMIN_PASSWORD=iets` in `.env.local`, anders kun je ook daar niet inloggen.
 
 Snapshots op Vercel worden gemaakt met `@sparticuz/chromium` (een headless Chromium voor serverless). De eerste snapshot na een tijdje stilte duurt iets langer door de koude start. Lukt een snapshot niet, dan probeert de app de Microlink API. Blokkeert een site robots helemaal, dan wordt de site opgeslagen met een placeholder en upload je zelf een afbeelding via het pijltje op de kaart.
 
@@ -28,7 +31,7 @@ Snapshots op Vercel worden gemaakt met `@sparticuz/chromium` (een headless Chrom
 
 | Naam                    | Wat                                                                   |
 | ----------------------- | --------------------------------------------------------------------- |
-| `ADMIN_PASSWORD`        | Wachtwoord voor de beheerder. Standaard `secret`, zet een eigen waarde in Vercel. Wijzigen logt iedereen uit. |
+| `ADMIN_PASSWORD`        | Wachtwoord voor de beheerder. Verplicht om te kunnen inloggen; zonder is de site alleen te bekijken. Wijzigen logt iedereen uit. |
 | `AUTH_SECRET`           | Optioneel. Eigen geheim voor de cookie handtekening.                    |
 | `BLOB_STORE_ID` / `BLOB_READ_WRITE_TOKEN` | Vercel Blob. Automatisch gezet als je de store koppelt (OIDC of vaste token). |
 | `BLOB_ACCESS`           | Optioneel: `private` of `public`. Zonder deze waarde probeert de app het zelf uit. |

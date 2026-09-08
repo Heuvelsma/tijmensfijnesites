@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { adminPassword, assertAdmin, clearAdminCookie, safeEqual, setAdminCookie } from "@/lib/admin";
+import { adminConfigured, adminPassword, assertAdmin, clearAdminCookie, safeEqual, setAdminCookie } from "@/lib/admin";
 import { captureSite, fetchTitle } from "@/lib/screenshot";
 import { importSeed as runSeedImport } from "@/lib/seed";
 import { getStore, updateIndex } from "@/lib/store";
@@ -12,6 +12,9 @@ export type ActionResult<T = undefined> = { ok: true; data: T; warning?: string 
 
 /** Admin login. Everything that changes the archive checks the resulting cookie. */
 export async function login(password: string): Promise<ActionResult> {
+  if (!adminConfigured()) {
+    return { ok: false, error: "Er is nog geen beheerderswachtwoord ingesteld. Zet ADMIN_PASSWORD in Vercel en deploy opnieuw." };
+  }
   if (!safeEqual(String(password ?? ""), adminPassword())) return { ok: false, error: "Verkeerd wachtwoord" };
   await setAdminCookie();
   return { ok: true, data: undefined };
