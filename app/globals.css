@@ -1613,6 +1613,23 @@ img {
   }
 }
 
+.sheet__panel--narrow {
+  width: min(460px, 100%);
+}
+
+.nav__lock {
+  color: var(--pill-muted);
+}
+
+.nav__lock:hover {
+  color: var(--pill-ink);
+}
+
+.footer .link-btn {
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .sheet__head {
   display: flex;
   align-items: center;

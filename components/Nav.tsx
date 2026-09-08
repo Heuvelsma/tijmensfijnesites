@@ -3,7 +3,7 @@
 import { forwardRef } from "react";
 import { Button } from "./Button";
 import { ThemeToggle } from "./ThemeToggle";
-import { IconPlus, IconSearch, IconX } from "./icons";
+import { IconLock, IconLogout, IconPlus, IconSearch, IconX } from "./icons";
 
 type Props = {
   query: string;
@@ -11,9 +11,15 @@ type Props = {
   total: number;
   shown: number;
   onAdd: () => void;
+  isAdmin: boolean;
+  onLogin: () => void;
+  onLogout: () => void;
 };
 
-export const Nav = forwardRef<HTMLElement, Props>(function Nav({ query, onQuery, total, shown, onAdd }, ref) {
+export const Nav = forwardRef<HTMLElement, Props>(function Nav(
+  { query, onQuery, total, shown, onAdd, isAdmin, onLogin, onLogout },
+  ref,
+) {
   return (
     <header ref={ref} className="nav">
       <div className="nav__pill">
@@ -36,7 +42,12 @@ export const Nav = forwardRef<HTMLElement, Props>(function Nav({ query, onQuery,
             enterKeyHint="search"
           />
           {query ? (
-            <button type="button" className="nav__clear" onClick={() => onQuery("")} aria-label="Zoekopdracht wissen">
+            <button
+              type="button"
+              className="nav__clear"
+              onClick={() => onQuery("")}
+              aria-label="Zoekopdracht wissen"
+            >
               <IconX size={12} />
             </button>
           ) : null}
@@ -53,9 +64,38 @@ export const Nav = forwardRef<HTMLElement, Props>(function Nav({ query, onQuery,
           )}
         </span>
         <ThemeToggle />
-        <Button variant="accent" icon={<IconPlus size={16} stroke={2} />} iconOnlyOnMobile onClick={onAdd} aria-label="Site toevoegen">
-          Toevoegen
-        </Button>
+        {isAdmin ? (
+          <>
+            <button
+              type="button"
+              className="theme"
+              onClick={onLogout}
+              aria-label="Uitloggen"
+              title="Uitloggen"
+            >
+              <IconLogout size={17} />
+            </button>
+            <Button
+              variant="accent"
+              icon={<IconPlus size={16} stroke={2} />}
+              iconOnlyOnMobile
+              onClick={onAdd}
+              aria-label="Site toevoegen"
+            >
+              Toevoegen
+            </Button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="theme nav__lock"
+            onClick={onLogin}
+            aria-label="Inloggen als beheerder"
+            title="Beheer"
+          >
+            <IconLock size={16} />
+          </button>
+        )}
       </div>
     </header>
   );

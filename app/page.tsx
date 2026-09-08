@@ -1,4 +1,5 @@
 import { SiteApp } from "@/components/SiteApp";
+import { isAdminRequest } from "@/lib/admin";
 import { fixSeedOrder, readSeedList } from "@/lib/seed";
 import { hasBlobStore, isVercel, listSites, storageEnvNames, updateIndex } from "@/lib/store";
 
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 90;
 
 export default async function Page() {
+  const isAdmin = await isAdminRequest();
   const onVercel = isVercel();
   const blob = hasBlobStore();
   const needsSetup = onVercel && !blob;
@@ -38,6 +40,7 @@ export default async function Page() {
 
   return (
     <SiteApp
+      isAdmin={isAdmin}
       initialSites={sites}
       seedCount={seedCount}
       needsSetup={needsSetup}

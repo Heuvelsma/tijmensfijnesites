@@ -88,3 +88,17 @@ export const IconPencil = ({ size, stroke }: P) => (
     <path d="m13.5 6.5 3 3" />
   </svg>
 );
+
+export const IconLock = ({ size, stroke }: P) => (
+  <svg {...base(size, stroke)}>
+    <rect x="5" y="11" width="14" height="10" rx="2" />
+    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+  </svg>
+);
+
+export const IconLogout = ({ size, stroke }: P) => (
+  <svg {...base(size, stroke)}>
+    <path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" />
+    <path d="M15 8l4 4-4 4M19 12H9" />
+  </svg>
+);

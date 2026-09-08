@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { adminPassword, assertAdmin, clearAdminCookie, safeEqual, setAdminCookie } from "@/lib/admin";
 import { captureSite, fetchTitle } from "@/lib/screenshot";
 import { importSeed as runSeedImport } from "@/lib/seed";
 import { getStore, updateIndex } from "@/lib/store";
@@ -9,25 +10,16 @@ import { cleanTitle, domainOf, makeId, normalizeUrl } from "@/lib/url";
 
 export type ActionResult<T = undefined> = { ok: true; data: T; warning?: string } | { ok: false; error: string };
 
-/** Adding and editing ask for a small password. Set EDIT_PASSWORD in Vercel to change it. */
-function editPassword(): string {
-  return process.env.EDIT_PASSWORD || "secret";
+/** Admin login. Everything that changes the archive checks the resulting cookie. */
+export async function login(password: string): Promise<ActionResult> {
+  if (!safeEqual(String(password ?? ""), adminPassword())) return { ok: false, error: "Verkeerd wachtwoord" };
+  await setAdminCookie();
+  return { ok: true, data: undefined };
 }
 
-function passwordOk(given: string | undefined): boolean {
-  const a = String(given ?? "");
-  const b = editPassword();
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
-const WRONG_PASSWORD = "Verkeerd wachtwoord";
-
-/** Lets the sheet check the password before it closes, so a typo stays inline. */
-export async function checkPassword(password: string): Promise<ActionResult> {
-  return passwordOk(password) ? { ok: true, data: undefined } : { ok: false, error: WRONG_PASSWORD };
+export async function logout(): Promise<ActionResult> {
+  await clearAdminCookie();
+  return { ok: true, data: undefined };
 }
 
 function fail(err: unknown): { ok: false; error: string } {
@@ -36,9 +28,9 @@ function fail(err: unknown): { ok: false; error: string } {
   return { ok: false, error: message };
 }
 
-export async function addSite(rawUrl: string, password: string): Promise<ActionResult<Site>> {
+export async function addSite(rawUrl: string): Promise<ActionResult<Site>> {
   try {
-    if (!passwordOk(password)) return { ok: false, error: WRONG_PASSWORD };
+    await assertAdmin();
     const url = normalizeUrl(rawUrl);
     const store = await getStore();
     const existing = (await store.readIndex()).sites.find((s) => s.url === url);
@@ -78,6 +70,7 @@ export async function addSite(rawUrl: string, password: string): Promise<ActionR
 
 export async function deleteSite(id: string): Promise<ActionResult> {
   try {
+    await assertAdmin();
     const store = await getStore();
     let removed: Site | undefined;
     await updateIndex((index) => {
@@ -94,6 +87,7 @@ export async function deleteSite(id: string): Promise<ActionResult> {
 
 export async function refreshSnapshot(id: string): Promise<ActionResult<Site>> {
   try {
+    await assertAdmin();
     const store = await getStore();
     const current = (await store.readIndex()).sites.find((s) => s.id === id);
     if (!current) return { ok: false, error: "Site niet gevonden" };
@@ -113,6 +107,7 @@ export async function refreshSnapshot(id: string): Promise<ActionResult<Site>> {
 
 export async function replaceImage(id: string, formData: FormData): Promise<ActionResult<Site>> {
   try {
+    await assertAdmin();
     const file = formData.get("file");
     if (!(file instanceof File) || !file.type.startsWith("image/")) return { ok: false, error: "Kies een afbeelding" };
     if (file.size > 15 * 1024 * 1024) return { ok: false, error: "Afbeelding is groter dan 15 MB" };
@@ -140,9 +135,9 @@ export async function replaceImage(id: string, formData: FormData): Promise<Acti
 export type SiteEdit = { url: string; title: string; refresh: boolean };
 
 /** Change the address and/or name of a site. A new snapshot is taken when asked (default when the URL changed). */
-export async function updateSite(id: string, edit: SiteEdit, password: string): Promise<ActionResult<Site>> {
+export async function updateSite(id: string, edit: SiteEdit): Promise<ActionResult<Site>> {
   try {
-    if (!passwordOk(password)) return { ok: false, error: WRONG_PASSWORD };
+    await assertAdmin();
     const store = await getStore();
     const index = await store.readIndex();
     const current = index.sites.find((s) => s.id === id);
@@ -184,6 +179,7 @@ export async function updateSite(id: string, edit: SiteEdit, password: string): 
 
 export async function renameSite(id: string, title: string): Promise<ActionResult<Site>> {
   try {
+    await assertAdmin();
     const clean = title.trim().slice(0, 60);
     if (!clean) return { ok: false, error: "Geef een naam op" };
     let updated: Site | undefined;
@@ -204,6 +200,7 @@ export async function renameSite(id: string, title: string): Promise<ActionResul
 
 export async function importSeed(): Promise<ActionResult<{ added: number; skipped: number }>> {
   try {
+    await assertAdmin();
     const result = await runSeedImport();
     revalidatePath("/");
     return { ok: true, data: result };

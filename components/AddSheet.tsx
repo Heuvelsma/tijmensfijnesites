@@ -6,17 +6,7 @@ import type { Site } from "@/lib/types";
 import { Button } from "./Button";
 import { IconArrowRight, IconX } from "./icons";
 
-export type SheetSubmit = { url: string; title: string; refresh: boolean; password: string };
-
-export const PASSWORD_KEY = "tfs-edit-key";
-
-export function rememberedPassword(): string {
-  try {
-    return localStorage.getItem(PASSWORD_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
+export type SheetSubmit = { url: string; title: string; refresh: boolean };
 
 type Props = {
   open: boolean;
@@ -140,16 +130,19 @@ type FormProps = {
 };
 
 /** The fields live in their own component so a fresh key resets them whenever the sheet opens. */
-function SheetForm({ editing, inputRef: input, serverError, busy, onClose, onSubmit }: FormProps) {
+function SheetForm({
+  editing,
+  inputRef: input,
+  serverError,
+  busy,
+  onClose,
+  onSubmit,
+}: FormProps) {
   const [url, setUrl] = useState(editing?.url ?? "");
   const [title, setTitle] = useState(editing?.title ?? "");
-  const [password, setPassword] = useState(() => rememberedPassword());
   const [manualRefresh, setManualRefresh] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const shownError = error ?? serverError;
-  // Password trouble belongs under the password field, everything else under the address.
-  const passwordError = shownError && /wachtwoord/i.test(shownError) ? shownError : null;
-  const urlError = passwordError ? null : shownError;
+  const urlError = error ?? serverError;
 
   const isEdit = Boolean(editing);
   const urlChanged = isEdit && normalize(url) !== editing?.url;
@@ -167,16 +160,11 @@ function SheetForm({ editing, inputRef: input, serverError, busy, onClose, onSub
       setError("Dat ziet er niet uit als een webadres.");
       return;
     }
-    if (!password) {
-      setError("Vul het wachtwoord in.");
-      return;
-    }
     setError(null);
     onSubmit({
       url: normalized,
       title: title.trim(),
       refresh: isEdit ? refresh : true,
-      password,
     });
   };
 
@@ -257,23 +245,6 @@ function SheetForm({ editing, inputRef: input, serverError, busy, onClose, onSub
         </>
       ) : null}
 
-      <label className="field field--small">
-        <span className="eyebrow">Wachtwoord</span>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => {
-            setPassword(e.target.value);
-            if (error) setError(null);
-          }}
-          placeholder="Alleen nodig om te bewaren"
-          autoComplete="current-password"
-        />
-        <span className={`field__hint${passwordError ? " field__error" : ""}`}>
-          {passwordError ?? "Wordt na één keer onthouden op dit apparaat."}
-        </span>
-      </label>
-
       <div className="sheet__actions">
         {isEdit ? (
           <span className="sheet__paste">{editing?.domain}</span>
@@ -286,7 +257,12 @@ function SheetForm({ editing, inputRef: input, serverError, busy, onClose, onSub
             Plakken uit klembord
           </button>
         )}
-        <Button type="submit" variant="solid" icon={<IconArrowRight size={16} />} disabled={busy}>
+        <Button
+          type="submit"
+          variant="solid"
+          icon={<IconArrowRight size={16} />}
+          disabled={busy}
+        >
           {busy ? "Even…" : isEdit ? "Opslaan" : "Snapshot maken"}
         </Button>
       </div>

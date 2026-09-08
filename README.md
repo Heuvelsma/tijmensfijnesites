@@ -1,6 +1,6 @@
 # Tijmens Fijne Sites
 
-Persoonlijk webinspiratie archief. Snapshots van homepages in een strak raster, elke snapshot is een link naar de site. Toevoegen, adres of naam aanpassen, verwijderen, zoeken, dark en light, een carrousel met de laatste toevoegingen en een intro die de titel op z'n plek zet. Openbare site; alleen toevoegen en aanpassen vragen een klein wachtwoord.
+Persoonlijk webinspiratie archief. Snapshots van homepages in een strak raster, elke snapshot is een link naar de site. Toevoegen, adres of naam aanpassen, verwijderen, zoeken, dark en light, een carrousel met de laatste toevoegingen en een intro die de titel op z'n plek zet. Openbare site om te bekijken; bewerken (toevoegen, aanpassen, verwijderen, snapshots) kan alleen na inloggen als beheerder via het slotje in de navigatie.
 
 Gebouwd met Next.js 16, GSAP, Lenis en Vercel Blob. Lettertype DM Sans.
 
@@ -28,7 +28,8 @@ Snapshots op Vercel worden gemaakt met `@sparticuz/chromium` (een headless Chrom
 
 | Naam                    | Wat                                                                   |
 | ----------------------- | --------------------------------------------------------------------- |
-| `EDIT_PASSWORD`         | Wachtwoord voor toevoegen en aanpassen. Standaard `secret`, zet een eigen waarde in Vercel. |
+| `ADMIN_PASSWORD`        | Wachtwoord voor de beheerder. Standaard `secret`, zet een eigen waarde in Vercel. Wijzigen logt iedereen uit. |
+| `AUTH_SECRET`           | Optioneel. Eigen geheim voor de cookie handtekening.                    |
 | `BLOB_STORE_ID` / `BLOB_READ_WRITE_TOKEN` | Vercel Blob. Automatisch gezet als je de store koppelt (OIDC of vaste token). |
 | `BLOB_ACCESS`           | Optioneel: `private` of `public`. Zonder deze waarde probeert de app het zelf uit. |
 | `CHROME_PATH`           | Optioneel, alleen lokaal. Pad naar een Chromium of Chrome binary.      |
@@ -46,11 +47,12 @@ app/
   globals.css         alle styling: tokens, dark en light, componenten
 components/
   SiteApp.tsx         client root: state, zoeken, intro en scroll choreografie (GSAP)
-  Intro.tsx, Nav.tsx, Hero.tsx, Ticker.tsx, Reel.tsx, Grid.tsx, SiteCard.tsx, AddSheet.tsx, Button.tsx, ThemeToggle.tsx, GridLines.tsx
+  Intro.tsx, Nav.tsx, Hero.tsx, Ticker.tsx, Reel.tsx, Grid.tsx, SiteCard.tsx, AddSheet.tsx, LoginSheet.tsx, Button.tsx, ThemeToggle.tsx, GridLines.tsx
 lib/
   screenshot.ts       snapshot maken (Chromium, Microlink als vangnet)
   store.ts            opslag: Vercel Blob (getimestampte index + afbeeldingen) of lokaal in .data/
   seed.ts             import van de startlijst
+  admin.ts            beheerderscookie (HMAC van het wachtwoord)
 seed/                 startlijst: sites.json en shots/*.webp
 ```
 

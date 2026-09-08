@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { addSite, checkPassword, deleteSite, importSeed, refreshSnapshot, replaceImage, updateSite } from "@/app/actions";
+import { addSite, deleteSite, importSeed, login, logout, refreshSnapshot, replaceImage, updateSite } from "@/app/actions";
 import { EASE, gsap, prefersReducedMotion, ScrollTrigger, SplitText, useGSAP } from "@/lib/gsap";
 import type { Site } from "@/lib/types";
 import { domainOf } from "@/lib/url";
-import { AddSheet, PASSWORD_KEY, type SheetSubmit } from "./AddSheet";
+import { AddSheet, type SheetSubmit } from "./AddSheet";
+import { LoginSheet } from "./LoginSheet";
 import { Button } from "./Button";
 import { Grid } from "./Grid";
 import { GridLines } from "./GridLines";
@@ -28,6 +29,7 @@ type Diagnostics = {
 };
 
 type Props = {
+  isAdmin: boolean;
   initialSites: Site[];
   seedCount: number;
   needsSetup: boolean;
@@ -54,7 +56,7 @@ function placeUnderline(scope: HTMLElement, lastWord: HTMLElement | undefined) {
   svg.style.height = `${Math.max(14, lastWord.offsetHeight * 0.22)}px`;
 }
 
-export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Props) {
+export function SiteApp({ isAdmin, initialSites, seedCount, needsSetup, diagnostics }: Props) {
   const router = useRouter();
   const [sites, setSites] = useState<Site[]>(initialSites);
   const [pending, setPending] = useState<PendingSite[]>([]);
@@ -64,8 +66,9 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
   const [editing, setEditing] = useState<Site | null>(null);
   const [sheetKey, setSheetKey] = useState(0);
   const [sheetError, setSheetError] = useState<string | null>(null);
-  const [sheetBusy, setSheetBusy] = useState(false);
-  const passwordRef = useRef("");
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [introDone, setIntroDone] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -108,7 +111,7 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
 
   const runAdd = useCallback(
     async (url: string, key: string) => {
-      const result = await addSite(url, passwordRef.current);
+      const result = await addSite(url);
       if (result.ok) {
         setPending((p) => p.filter((x) => x.key !== key));
         setSites((prev) => [result.data, ...prev.filter((s) => s.id !== result.data.id)]);
@@ -121,28 +124,35 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
     [toast],
   );
 
-  const handleSheet = async (values: SheetSubmit) => {
-    // Check the password first so a typo stays in the sheet instead of failing a card.
-    setSheetBusy(true);
-    setSheetError(null);
-    const check = await checkPassword(values.password);
-    setSheetBusy(false);
-    if (!check.ok) {
-      setSheetError(check.error);
-      return;
-    }
-    passwordRef.current = values.password;
-    try {
-      localStorage.setItem(PASSWORD_KEY, values.password);
-    } catch {}
+  const handleSheet = (values: SheetSubmit) => {
     if (editing) void handleEditSave(editing, values);
     else handleAdd(values.url);
+  };
+
+  /* ---------------- admin session ---------------- */
+
+  const handleLogin = async (password: string) => {
+    setLoginBusy(true);
+    setLoginError(null);
+    const result = await login(password);
+    setLoginBusy(false);
+    if (result.ok) {
+      setLoginOpen(false);
+      toast("Ingelogd, je kunt nu bewerken");
+      router.refresh();
+    } else setLoginError(result.error);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    toast("Uitgelogd");
+    router.refresh();
   };
 
   const handleEditSave = async (site: Site, values: SheetSubmit) => {
     setSheetOpen(false);
     setBusy(site.id, true);
-    const result = await updateSite(site.id, values, values.password);
+    const result = await updateSite(site.id, values);
     setBusy(site.id, false);
     if (result.ok) {
       setSites((prev) => prev.map((s) => (s.id === site.id ? result.data : s)));
@@ -423,7 +433,20 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
     <div ref={root} className="page">
       <GridLines />
       <Intro ref={introRef} />
-      <Nav ref={navRef} query={query} onQuery={setQuery} total={sites.length} shown={visibleIds.size} onAdd={openSheet} />
+      <Nav
+        ref={navRef}
+        query={query}
+        onQuery={setQuery}
+        total={sites.length}
+        shown={visibleIds.size}
+        onAdd={openSheet}
+        isAdmin={isAdmin}
+        onLogin={() => {
+          setLoginError(null);
+          setLoginOpen(true);
+        }}
+        onLogout={handleLogout}
+      />
 
       <main>
         <Hero ref={titleRef} total={sites.length} latest={latest} />
@@ -477,14 +500,22 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
                 ) : null}
               </dl>
               <div className="empty__actions">
-                {seedCount > 0 && !needsSetup ? (
-                  <Button variant="solid" icon={<IconArrowRight size={16} />} onClick={handleImport} disabled={importing}>
-                    {importing ? "Bezig met importeren…" : `Startlijst importeren (${seedCount})`}
+                {isAdmin ? (
+                  <>
+                    {seedCount > 0 && !needsSetup ? (
+                      <Button variant="solid" icon={<IconArrowRight size={16} />} onClick={handleImport} disabled={importing}>
+                        {importing ? "Bezig met importeren…" : `Startlijst importeren (${seedCount})`}
+                      </Button>
+                    ) : null}
+                    <Button icon={<IconPlus size={16} />} onClick={openSheet}>
+                      Site toevoegen
+                    </Button>
+                  </>
+                ) : (
+                  <Button icon={<IconArrowRight size={16} />} onClick={() => setLoginOpen(true)}>
+                    Inloggen om te beginnen
                   </Button>
-                ) : null}
-                <Button icon={<IconPlus size={16} />} onClick={openSheet}>
-                  Site toevoegen
-                </Button>
+                )}
               </div>
             </section>
           ) : (
@@ -499,6 +530,7 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
               onRefresh={handleRefresh}
               onReplace={handleReplace}
               onEdit={handleEdit}
+              canEdit={isAdmin}
               onRetry={handleRetry}
               onDismiss={handleDismiss}
             />
@@ -511,7 +543,23 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
           <strong>Tijmens Fijne Sites</strong>
         </span>
         <span>
-          {sites.length} {sites.length === 1 ? "site" : "sites"}
+          {sites.length} {sites.length === 1 ? "site" : "sites"} ·{" "}
+          {isAdmin ? (
+            <button type="button" className="link-btn" onClick={handleLogout}>
+              Uitloggen
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() => {
+                setLoginError(null);
+                setLoginOpen(true);
+              }}
+            >
+              Beheer
+            </button>
+          )}
         </span>
         <Button size="sm" icon={<IconArrowUp size={15} />} onClick={toTop}>
           Naar boven
@@ -523,10 +571,10 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
         editing={editing}
         resetKey={sheetKey}
         serverError={sheetError}
-        busy={sheetBusy}
         onClose={() => setSheetOpen(false)}
         onSubmit={handleSheet}
       />
+      <LoginSheet open={loginOpen} busy={loginBusy} error={loginError} onClose={() => setLoginOpen(false)} onSubmit={handleLogin} />
       <Toasts items={toasts} />
     </div>
   );
