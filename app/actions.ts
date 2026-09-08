@@ -9,14 +9,36 @@ import { cleanTitle, domainOf, makeId, normalizeUrl } from "@/lib/url";
 
 export type ActionResult<T = undefined> = { ok: true; data: T; warning?: string } | { ok: false; error: string };
 
+/** Adding and editing ask for a small password. Set EDIT_PASSWORD in Vercel to change it. */
+function editPassword(): string {
+  return process.env.EDIT_PASSWORD || "secret";
+}
+
+function passwordOk(given: string | undefined): boolean {
+  const a = String(given ?? "");
+  const b = editPassword();
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+const WRONG_PASSWORD = "Verkeerd wachtwoord";
+
+/** Lets the sheet check the password before it closes, so a typo stays inline. */
+export async function checkPassword(password: string): Promise<ActionResult> {
+  return passwordOk(password) ? { ok: true, data: undefined } : { ok: false, error: WRONG_PASSWORD };
+}
+
 function fail(err: unknown): { ok: false; error: string } {
   const message = err instanceof Error ? err.message : "Er ging iets mis";
   console.error("[actions]", err);
   return { ok: false, error: message };
 }
 
-export async function addSite(rawUrl: string): Promise<ActionResult<Site>> {
+export async function addSite(rawUrl: string, password: string): Promise<ActionResult<Site>> {
   try {
+    if (!passwordOk(password)) return { ok: false, error: WRONG_PASSWORD };
     const url = normalizeUrl(rawUrl);
     const store = await getStore();
     const existing = (await store.readIndex()).sites.find((s) => s.url === url);
@@ -118,8 +140,9 @@ export async function replaceImage(id: string, formData: FormData): Promise<Acti
 export type SiteEdit = { url: string; title: string; refresh: boolean };
 
 /** Change the address and/or name of a site. A new snapshot is taken when asked (default when the URL changed). */
-export async function updateSite(id: string, edit: SiteEdit): Promise<ActionResult<Site>> {
+export async function updateSite(id: string, edit: SiteEdit, password: string): Promise<ActionResult<Site>> {
   try {
+    if (!passwordOk(password)) return { ok: false, error: WRONG_PASSWORD };
     const store = await getStore();
     const index = await store.readIndex();
     const current = index.sites.find((s) => s.id === id);

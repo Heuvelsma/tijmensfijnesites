@@ -1,6 +1,6 @@
 # Tijmens Fijne Sites
 
-Persoonlijk webinspiratie archief. Snapshots van homepages in een strak raster, elke snapshot is een link naar de site. Toevoegen, adres of naam aanpassen, verwijderen, zoeken, dark en light, een carrousel met de laatste toevoegingen en een intro die de titel op z'n plek zet. Openbare site, geen wachtwoord.
+Persoonlijk webinspiratie archief. Snapshots van homepages in een strak raster, elke snapshot is een link naar de site. Toevoegen, adres of naam aanpassen, verwijderen, zoeken, dark en light, een carrousel met de laatste toevoegingen en een intro die de titel op z'n plek zet. Openbare site; alleen toevoegen en aanpassen vragen een klein wachtwoord.
 
 Gebouwd met Next.js 16, GSAP, Lenis en Vercel Blob. Lettertype DM Sans.
 
@@ -28,6 +28,7 @@ Snapshots op Vercel worden gemaakt met `@sparticuz/chromium` (een headless Chrom
 
 | Naam                    | Wat                                                                   |
 | ----------------------- | --------------------------------------------------------------------- |
+| `EDIT_PASSWORD`         | Wachtwoord voor toevoegen en aanpassen. Standaard `secret`, zet een eigen waarde in Vercel. |
 | `BLOB_STORE_ID` / `BLOB_READ_WRITE_TOKEN` | Vercel Blob. Automatisch gezet als je de store koppelt (OIDC of vaste token). |
 | `BLOB_ACCESS`           | Optioneel: `private` of `public`. Zonder deze waarde probeert de app het zelf uit. |
 | `CHROME_PATH`           | Optioneel, alleen lokaal. Pad naar een Chromium of Chrome binary.      |

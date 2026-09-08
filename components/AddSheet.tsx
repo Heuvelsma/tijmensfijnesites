@@ -6,7 +6,17 @@ import type { Site } from "@/lib/types";
 import { Button } from "./Button";
 import { IconArrowRight, IconX } from "./icons";
 
-export type SheetSubmit = { url: string; title: string; refresh: boolean };
+export type SheetSubmit = { url: string; title: string; refresh: boolean; password: string };
+
+export const PASSWORD_KEY = "tfs-edit-key";
+
+export function rememberedPassword(): string {
+  try {
+    return localStorage.getItem(PASSWORD_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
 
 type Props = {
   open: boolean;
@@ -14,6 +24,9 @@ type Props = {
   editing?: Site | null;
   /** Bump this whenever the sheet opens so the form starts fresh. */
   resetKey: number;
+  /** Error from the server to show inline (wrong password, clashing address). */
+  serverError?: string | null;
+  busy?: boolean;
   onClose: () => void;
   onSubmit: (values: SheetSubmit) => void;
 };
@@ -36,6 +49,8 @@ export function AddSheet({
   open,
   editing,
   resetKey,
+  serverError,
+  busy,
   onClose,
   onSubmit,
 }: Props) {
@@ -106,6 +121,8 @@ export function AddSheet({
         key={resetKey}
         editing={editing ?? null}
         inputRef={input}
+        serverError={serverError ?? null}
+        busy={Boolean(busy)}
         onClose={onClose}
         onSubmit={onSubmit}
       />
@@ -116,16 +133,23 @@ export function AddSheet({
 type FormProps = {
   editing: Site | null;
   inputRef: React.RefObject<HTMLInputElement | null>;
+  serverError: string | null;
+  busy: boolean;
   onClose: () => void;
   onSubmit: (values: SheetSubmit) => void;
 };
 
 /** The fields live in their own component so a fresh key resets them whenever the sheet opens. */
-function SheetForm({ editing, inputRef: input, onClose, onSubmit }: FormProps) {
+function SheetForm({ editing, inputRef: input, serverError, busy, onClose, onSubmit }: FormProps) {
   const [url, setUrl] = useState(editing?.url ?? "");
   const [title, setTitle] = useState(editing?.title ?? "");
+  const [password, setPassword] = useState(() => rememberedPassword());
   const [manualRefresh, setManualRefresh] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const shownError = error ?? serverError;
+  // Password trouble belongs under the password field, everything else under the address.
+  const passwordError = shownError && /wachtwoord/i.test(shownError) ? shownError : null;
+  const urlError = passwordError ? null : shownError;
 
   const isEdit = Boolean(editing);
   const urlChanged = isEdit && normalize(url) !== editing?.url;
@@ -143,11 +167,16 @@ function SheetForm({ editing, inputRef: input, onClose, onSubmit }: FormProps) {
       setError("Dat ziet er niet uit als een webadres.");
       return;
     }
+    if (!password) {
+      setError("Vul het wachtwoord in.");
+      return;
+    }
     setError(null);
     onSubmit({
       url: normalized,
       title: title.trim(),
       refresh: isEdit ? refresh : true,
+      password,
     });
   };
 
@@ -193,8 +222,8 @@ function SheetForm({ editing, inputRef: input, onClose, onSubmit }: FormProps) {
           autoCapitalize="off"
           spellCheck={false}
         />
-        <span className={`field__hint${error ? " field__error" : ""}`}>
-          {error ??
+        <span className={`field__hint${urlError ? " field__error" : ""}`}>
+          {urlError ??
             (isEdit
               ? "Verhuisd, hernoemd of gewoon een betere pagina? Pas het adres aan."
               : "Ik maak een snapshot van de homepage op 1440 bij 900. Dat duurt tien tot dertig seconden.")}
@@ -228,6 +257,23 @@ function SheetForm({ editing, inputRef: input, onClose, onSubmit }: FormProps) {
         </>
       ) : null}
 
+      <label className="field field--small">
+        <span className="eyebrow">Wachtwoord</span>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            if (error) setError(null);
+          }}
+          placeholder="Alleen nodig om te bewaren"
+          autoComplete="current-password"
+        />
+        <span className={`field__hint${passwordError ? " field__error" : ""}`}>
+          {passwordError ?? "Wordt na één keer onthouden op dit apparaat."}
+        </span>
+      </label>
+
       <div className="sheet__actions">
         {isEdit ? (
           <span className="sheet__paste">{editing?.domain}</span>
@@ -240,12 +286,8 @@ function SheetForm({ editing, inputRef: input, onClose, onSubmit }: FormProps) {
             Plakken uit klembord
           </button>
         )}
-        <Button
-          type="submit"
-          variant="solid"
-          icon={<IconArrowRight size={16} />}
-        >
-          {isEdit ? "Opslaan" : "Snapshot maken"}
+        <Button type="submit" variant="solid" icon={<IconArrowRight size={16} />} disabled={busy}>
+          {busy ? "Even…" : isEdit ? "Opslaan" : "Snapshot maken"}
         </Button>
       </div>
     </form>

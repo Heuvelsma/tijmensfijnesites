@@ -2,11 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { addSite, deleteSite, importSeed, refreshSnapshot, replaceImage, updateSite } from "@/app/actions";
+import { addSite, checkPassword, deleteSite, importSeed, refreshSnapshot, replaceImage, updateSite } from "@/app/actions";
 import { EASE, gsap, prefersReducedMotion, ScrollTrigger, SplitText, useGSAP } from "@/lib/gsap";
 import type { Site } from "@/lib/types";
 import { domainOf } from "@/lib/url";
-import { AddSheet, type SheetSubmit } from "./AddSheet";
+import { AddSheet, PASSWORD_KEY, type SheetSubmit } from "./AddSheet";
 import { Button } from "./Button";
 import { Grid } from "./Grid";
 import { GridLines } from "./GridLines";
@@ -63,6 +63,9 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<Site | null>(null);
   const [sheetKey, setSheetKey] = useState(0);
+  const [sheetError, setSheetError] = useState<string | null>(null);
+  const [sheetBusy, setSheetBusy] = useState(false);
+  const passwordRef = useRef("");
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [introDone, setIntroDone] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -105,7 +108,7 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
 
   const runAdd = useCallback(
     async (url: string, key: string) => {
-      const result = await addSite(url);
+      const result = await addSite(url, passwordRef.current);
       if (result.ok) {
         setPending((p) => p.filter((x) => x.key !== key));
         setSites((prev) => [result.data, ...prev.filter((s) => s.id !== result.data.id)]);
@@ -118,7 +121,20 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
     [toast],
   );
 
-  const handleSheet = (values: SheetSubmit) => {
+  const handleSheet = async (values: SheetSubmit) => {
+    // Check the password first so a typo stays in the sheet instead of failing a card.
+    setSheetBusy(true);
+    setSheetError(null);
+    const check = await checkPassword(values.password);
+    setSheetBusy(false);
+    if (!check.ok) {
+      setSheetError(check.error);
+      return;
+    }
+    passwordRef.current = values.password;
+    try {
+      localStorage.setItem(PASSWORD_KEY, values.password);
+    } catch {}
     if (editing) void handleEditSave(editing, values);
     else handleAdd(values.url);
   };
@@ -126,7 +142,7 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
   const handleEditSave = async (site: Site, values: SheetSubmit) => {
     setSheetOpen(false);
     setBusy(site.id, true);
-    const result = await updateSite(site.id, values);
+    const result = await updateSite(site.id, values, values.password);
     setBusy(site.id, false);
     if (result.ok) {
       setSites((prev) => prev.map((s) => (s.id === site.id ? result.data : s)));
@@ -137,6 +153,7 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
 
   const handleEdit = (site: Site) => {
     setEditing(site);
+    setSheetError(null);
     setSheetKey((k) => k + 1);
     setSheetOpen(true);
   };
@@ -390,6 +407,7 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
 
   const openSheet = () => {
     setEditing(null);
+    setSheetError(null);
     setSheetKey((k) => k + 1);
     setSheetOpen(true);
   };
@@ -500,7 +518,15 @@ export function SiteApp({ initialSites, seedCount, needsSetup, diagnostics }: Pr
         </Button>
       </footer>
 
-      <AddSheet open={sheetOpen} editing={editing} resetKey={sheetKey} onClose={() => setSheetOpen(false)} onSubmit={handleSheet} />
+      <AddSheet
+        open={sheetOpen}
+        editing={editing}
+        resetKey={sheetKey}
+        serverError={sheetError}
+        busy={sheetBusy}
+        onClose={() => setSheetOpen(false)}
+        onSubmit={handleSheet}
+      />
       <Toasts items={toasts} />
     </div>
   );
